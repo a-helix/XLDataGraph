@@ -7,8 +7,8 @@ et-xmlfile==1.1.0
 fonttools==4.53.0
 idna==3.7
 kiwisolver==1.4.5
-matplotlib==3.9.1
-matplotlib-venn==1.1.1
+matplotlib==3.10.0
+matplotlib-venn==1.1.2
 msgpack==1.0.8
 networkx==3.3
 numpy==1.26.4
@@ -16,9 +16,9 @@ openpyxl==3.1.4
 packaging==24.1
 pandas==2.2.2
 pillow==10.3.0
-pip==24.2
+pip==25.0.1
 progressbar2==4.4.2
-pyCirclize==1.6.0
+pyCirclize==1.9.0
 pyparsing==3.1.2
 python-dateutil==2.9.0.post0
 python-utils==3.8.2
