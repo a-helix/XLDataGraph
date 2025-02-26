@@ -10,11 +10,13 @@ import re
 import io
 import copy
 
+from pycirclize import Circos
+
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 from matplotlib_venn import venn2
-from pycirclize import Circos
+
 
 
 class Protein_Chain_ID_Dataset:
