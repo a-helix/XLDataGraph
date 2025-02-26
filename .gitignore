@@ -169,3 +169,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+/.vs/XLDataGraph/v17
+/.vs/XLDataGraph/FileContentIndex
+/XLDataGraph/XLDataGraph.pyproj
+/XLDataGraph/XLDataGraph.pyproj.user
+/XLDataGraph.sln
+/XLDataGraph/examples
