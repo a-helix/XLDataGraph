@@ -257,16 +257,14 @@ class Merox_Dataset:
             for xl, frequency in self.xls_site_count.items():
                 file.write(f'{xl.protein_1}{separator}{xl.peptide_1}{separator}{xl.from_1}{separator}{xl.to_1}{separator}{xl.site_1}{separator}{xl.protein_2}{separator}{xl.peptide_2}{separator}{xl.from_2}{separator}{xl.to_2}{separator}{xl.site_2}{separator}{xl.is_interprotein}{separator}{xl.is_homotypical}{separator}{frequency}\n')
 
-    def export_for_chimerax(self, path: str, name: str, pcid: Protein_Chain_ID_Dataset, color_heterotypical_intraprotein_xl: str = '#21a2ed', color_heterotypical_interprotein_xl: str = '#00008B', color_homotypical_xl: str = '#ed2b21') -> None:
+    def export_for_chimerax(self, path: str, name: str, pcid: Protein_Chain_ID_Dataset, diameter: int = 0.2, color_heterotypical_intraprotein_xl: str = '#21a2ed', color_heterotypical_interprotein_xl: str = '#00008B', color_homotypical_xl: str = '#ed2b21') -> None:
         new_folder = os.path.join(path, name)
         os.makedirs(new_folder, exist_ok=True)
         
         xl_frequencies = set(self.xls_site_count.values())
 
         for xl_frequency in xl_frequencies:
-            diameter = 0.15
-
-            parameters = f'; dashes = 1\n; radius = {(xl_frequency * diameter):.2f}\n'
+            parameters = f'; dashes = 1\n; radius = {diameter}\n'
             buffer_heterotypical_INTRAprotein_xl = ''
             buffer_heterotypical_INTERprotein_xl = ''
             buffer_homotypical_xl = ''
