@@ -14,38 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 
-from xldg.xl import XL, XL_Dataset, Fasta_Dataset
-
-
-class Protein_Chain_ID_Dataset:
-    def __init__(self, pcid_file_path: str):
-        self.path = pcid_file_path
-        self.pcids = {}
-        self._assign_pcids(pcid_file_path)
-
-    def _assign_pcids(self, path_to_pcid_file: str) -> None:
-        try:
-            with open(path_to_pcid_file, 'r') as file:
-                for line in file:
-                    splited_line = line.replace('\n', '').split(',')
-                    self.pcids[splited_line[0]] = splited_line[1:]
-
-        except FileNotFoundError:
-            raise ValueError(f'Protein_Chain_ID_Dataset error: File at {path_to_pcid_file} was not found.')
-        except Exception as e:
-            raise ValueError(f'Protein_Chain_ID_Dataset error: {e}')
-
-    def __len__(self):
-        return len(self.pcids)
-
-    def __iter__(self):
-        return iter(self.pcids.items())
-
-    def __getitem__(self, key):
-        return self.pcids[key]
-
-    def __next__(self):
-        return next(iter(self.pcids.items()))
+from .xl import XL, XL_Dataset, Fasta_Dataset
 
 
 class Domain:
@@ -128,7 +97,7 @@ class Circos_Config:
                  # Figure configs 
                  lable_interval: int = 20, 
                  space_between_sectors: int = 5,
-                 domain_legend_distance: float = 1.15,
+                 domain_legend_distance: float = 1.3,
                  xl_legend_distance: float = 1.3,
                  xl_counter_distance: float = -0.15,
                  legend_distance: float = -0.15,
@@ -222,8 +191,8 @@ class Circos_Plot:
         
         if (self.config.legend is not None):
             self._plot_user_legend()
-            
-        if (self.domains is not None and len(self.domains) != 0):
+
+        if (self.config.domains is not None and len(self.config.domains) != 0):
             self._plot_domains()
             
         self._plot_xl_legend()
@@ -435,102 +404,3 @@ class Circos_Plot:
         self.heterotypic_interprotein_xl_color = heterotypic_interprotein_xl_color
         self.homotypic_xl_color = homotypic_xl_color
         self.general_xl_color = general_xl_color
-
-   
-def list_specified_type_files_in_folder(folder_path: str, file_format: str) -> List[str]:
-    files = []
-    for file in os.listdir(folder_path):
-        if file.endswith(file_format):
-            files.append(os.path.join(folder_path, file))
-
-    return files
-
-
-def sort_by_first_integers_in_filename(strings: List[str]) -> List[str]:
-    def extract_leading_integer_from_file_name(s: str) -> int:
-        file_path_only = os.path.basename(s)
-        match = re.match(r'^(\d+)_', file_path_only)
-        return int(match.group(1)) if match else float('inf')
-
-    sorted_strings = sorted(strings, key=extract_leading_integer_from_file_name)
-
-    return sorted_strings
-
-
-def _extract_merox_result_from_zhrm_file(path: str, linker: str) -> 'XL_Dataset':
-    xls = []
-    software = 'MeroX'
-
-    with zipfile.ZipFile(path, 'r') as zip_ref:
-        with zip_ref.open('Result.csv') as csv_file:
-            for line in io.TextIOWrapper(csv_file, encoding='utf-8'):
-                row = line.strip().split(';')
-                xl = XL(row[7], row[6], row[8], row[9], row[20], 
-                        row[11], row[10], row[12], row[13], row[21],
-                        row[0], software, linker)
-                xls.append(xl)
-
-    dataset = XL_Dataset(xls)
-    dataset.set_xls_site_count_to_one()
-
-    return dataset
-  
-
-def read_merox_zhrm_files_from_path_list(path_list: List[str], linker: str = None) -> List['XL_Dataset']:
-    file_content = []
-    
-    for path in path_list:
-        print(f'Extracting: {path}')
-        file_content.append(_extract_merox_result_from_zhrm_file(path, linker))   
-
-    return file_content
-
-
-def filter_all_results_by_score(dataset: List['XL_Dataset'], threshold: int = 50) -> List['XL_Dataset']:
-    for data in dataset:
-        data.filter_by_score(threshold)
-    return dataset
-    
-
-def combine_replicas_in_xl_dataset(dataset: List['XL_Dataset'], n=3) -> List['XL_Dataset']:
-    combined_dataset = []
-    buffer = []
-    
-    if ((len(dataset) % n) != 0):
-        raise Exception(f'ERROR! dataset size {len(dataset)} is not mutiple to n={n}')
-    
-    for data in dataset:
-        if (len(buffer) == n):
-            combined_dataset.append(XL_Dataset.combine_datasets(buffer))
-            buffer.clear()
-        buffer.append(data)
-        
-    combined_dataset.append(XL_Dataset.combine_datasets(buffer))
-
-    return combined_dataset
-
-
-def fuse_list_of_xl_datsets(dataset_list: List['XL_Dataset']) -> 'XL_Dataset':
-    return XL_Dataset([element for sublist in dataset_list for element in sublist])
-
-
-def generate_custom_list_with_int_ranges(*diapason) -> List[int]:
-    custom_list = []
-
-    for pair in diapason:
-        start = pair[0]
-        end = pair[1]
-    
-        for i in range(start, end):
-            custom_list.append(i)
-
-    return custom_list
-
-
-def get_selected_xls_from_dataset_list(dataset_list: List['XL_Dataset'], indexes: List[int]) -> 'XL_Dataset':
-    buffer = []
-    
-    for x in indexes:
-        buffer.append(dataset_list[x])
-
-    return XL_Dataset.combine_datasets(buffer)  

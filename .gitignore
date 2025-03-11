@@ -1,7 +1,7 @@
 .vs/
 xldg/env/
 examples/
-tests/
 *.sln
 *.pyproj
+xldg/src/xldg/__pycache__/
 xldg/src/xldg/venn2.py

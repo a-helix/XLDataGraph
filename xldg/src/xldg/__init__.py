@@ -1,5 +1,5 @@
-from xldg.circos import circos
-from xldg.xl import circos
+from .circos import *
+from .xl import *
 
 __version__ = "0.2.2"
 
