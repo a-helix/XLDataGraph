@@ -1,11 +1,6 @@
-﻿import collections
-import colorsys
-import math
-from typing import List, Tuple, Iterator, Dict
-import zipfile
+﻿import colorsys
+from typing import List, Iterator
 import os
-import re
-import io
 import copy
 
 from pycirclize import Circos
@@ -14,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 
-from .xl import XL, XL_Dataset, Fasta_Dataset
+from xldg.xl import XL_Dataset, Fasta_Dataset
 
 
 class Domain:
@@ -38,7 +33,7 @@ class Domain:
 class Domain_Dataset:
     def __init__(self, domain_files_paths_list: List[str]):
         self.domains = self._extract_all_domain_content_from_folder(domain_files_paths_list)
-        self.size = len(self.domains)
+        self._size = len(self.domains)
         self._index = 0  # Initialize an index for iteration
         
     def _extract_all_domain_content_from_folder(self, domain_files_paths_list: List[str]) -> List['Domain']:
@@ -49,7 +44,8 @@ class Domain_Dataset:
             try:
                 with open(file_path, 'r') as file:
                     for line in file:
-                        if line[0] == '#':
+                        # Ignore comments and empty lines
+                        if line[0] == '#' or len(line) == 0:
                             continue
                         domains.append(Domain(line))
             except FileNotFoundError:
@@ -60,14 +56,14 @@ class Domain_Dataset:
         return domains
 
     def __len__(self):
-        return self.size
+        return self._size
 
     def __iter__(self) -> Iterator['Domain']:
         self._index = 0  # Reset index for new iteration
         return self
     
     def __next__(self) -> 'Domain':
-        if self._index < self.size:
+        if self._index < self._size:
             domain = self.domains[self._index]
             self._index += 1
             return domain
@@ -83,7 +79,7 @@ class Domain_Dataset:
                     break
 
         self.domains = filtered_domains
-        self.size = len(self.domains)
+        self._size = len(self.domains)
 
 
 class Circos_Config:

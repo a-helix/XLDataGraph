@@ -1,7 +1,13 @@
 .vs/
 xldg/env/
+xldg/env11/
+xldg/tests/data/
 examples/
+TestResults/
+build/
+xldg.egg-info/
+__pycache__/
 *.sln
 *.pyproj
-xldg/src/xldg/__pycache__/
 xldg/src/xldg/venn2.py
+

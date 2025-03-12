@@ -25,9 +25,8 @@ second = combined_replicas[1]
 ### Individual datasets
 config = Circos_Config(all_fastas, all_domains)
 config.legend = 'Some text to see test functionality'
+
 config.title = 'First'
-
-
 plot = Circos_Plot(first, config)
 plot.save(os.path.join(folder_path, r'first.svg'))
 
