@@ -12,6 +12,7 @@ from xldg.xl import XL, XL_Dataset
 class PathUtil:
     @staticmethod
     def list_specified_type_files_from_folder(folder_path: str, file_format: str) -> List[str]:
+        """List all files with a specific format from a folder."""
         files = []
         for file in os.listdir(folder_path):
             if file.endswith(file_format):
@@ -21,14 +22,15 @@ class PathUtil:
 
     @staticmethod
     def sort_filenames_by_first_integer(strings: List[str]) -> List[str]:
-        def extract_leading_integer_from_file_name(s: str) -> int:
-            file_path_only = os.path.basename(s)
-            match = re.match(r'^(\d+)_', file_path_only)
+        """Sort filenames by the first integer appearing in the filename."""
+        print('HERE')
+        def extract_integer(s: str) -> int:
+            file_name = os.path.basename(s)
+            match = re.search(r'(\d+)', file_name)
+            print(int(match.group(1)))
             return int(match.group(1)) if match else float('inf')
-
-        sorted_strings = sorted(strings, key=extract_leading_integer_from_file_name)
-
-        return sorted_strings
+        print('HERE')
+        return sorted(strings, key=extract_integer)
 
 class DatasetUtil:
     @staticmethod
