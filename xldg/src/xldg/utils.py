@@ -21,55 +21,53 @@ class PathUtil:
         return files
 
     @staticmethod
-    def sort_filenames_by_first_integer(strings: List[str]) -> List[str]:
+    def sort_filenames_by_first_integer(strings: List[str], ignore: str = None) -> List[str]:
         """Sort filenames by the first integer appearing in the filename."""
-        print('HERE')
-        def extract_integer(s: str) -> int:
+        def _extract_integer(s: str) -> int:
             file_name = os.path.basename(s)
+            if ignore is not None:
+                file_name = file_name.replace(ignore, '')
+
             match = re.search(r'(\d+)', file_name)
-            print(int(match.group(1)))
             return int(match.group(1)) if match else float('inf')
-        print('HERE')
-        return sorted(strings, key=extract_integer)
+
+        return sorted(strings, key=_extract_integer)
 
 class DatasetUtil:
     @staticmethod
-    def _extract_merox_result_from_zhrm_file(self, path: str, linker: str) -> 'XL_Dataset':
-        xls = []
-        software = 'MeroX'
+    def read_merox_zhrm_files_from_path_list(path_list: List[str], linker: str = None) -> List['XL_Dataset']:
+        def _extract_merox_result_from_zhrm_file(path: str, linker: str) -> 'XL_Dataset':
+            xls = []
+            software = 'MeroX'
 
-        with zipfile.ZipFile(path, 'r') as zip_ref:
-            with zip_ref.open('Result.csv') as csv_file:
-                for line in io.TextIOWrapper(csv_file, encoding='utf-8'):
-                    row = line.strip().split(';')
-                    xl = XL(row[7], row[6], row[8], row[9], row[20], 
-                            row[11], row[10], row[12], row[13], row[21],
-                            row[0], software, linker)
-                    xls.append(xl)
+            with zipfile.ZipFile(path, 'r') as zip_ref:
+                with zip_ref.open('Result.csv') as csv_file:
+                    for line in io.TextIOWrapper(csv_file, encoding='utf-8'):
+                        row = line.strip().split(';')
+                        xl = XL(row[7], row[6], row[8], row[9], row[20], 
+                                row[11], row[10], row[12], row[13], row[21],
+                                row[0], software, linker)
+                        xls.append(xl)
 
-        dataset = XL_Dataset(xls)
-        dataset.set_xls_site_count_to_one()
+            dataset = XL_Dataset(xls)
+            dataset.set_xls_site_count_to_one()
+            return dataset
 
-        return dataset
-
-    @staticmethod
-    def read_merox_zhrm_files_from_path_list(self, path_list: List[str], linker: str = None) -> List['XL_Dataset']:
         file_content = []
     
         for path in path_list:
             print(f'Extracting: {path}')
-            file_content.append(self._extract_merox_result_from_zhrm_file(path, linker))   
-
+            file_content.append(_extract_merox_result_from_zhrm_file(path, linker))   
         return file_content
 
     @staticmethod
-    def filter_all_results_by_score(self, dataset: List['XL_Dataset'], threshold: int = 50) -> List['XL_Dataset']:
+    def filter_all_results_by_score(dataset: List['XL_Dataset'], threshold: int = 50) -> List['XL_Dataset']:
         for data in dataset:
             data.filter_by_score(threshold)
         return dataset    
 
     @staticmethod
-    def combine_replicas_in_xl_dataset(self, dataset: List['XL_Dataset'], n=3) -> List['XL_Dataset']:
+    def combine_replicas_in_xl_dataset(dataset: List['XL_Dataset'], n=3) -> List['XL_Dataset']:
         combined_dataset = []
         buffer = []
     

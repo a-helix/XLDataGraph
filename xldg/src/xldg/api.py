@@ -1,14 +1,12 @@
-import re
 import os
 import time
 import requests
-import csv
 import copy
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.patheffects as path_effects
 import numpy as np
-from typing import Tuple, List, Set, Dict
+from typing import  List, Set, Dict
 from xldg import xl
 
 

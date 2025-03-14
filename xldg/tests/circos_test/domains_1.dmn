@@ -1,0 +1,15 @@
+# Base colours
+>GSTIMP1-cleav,#C0C0C0
+
+# Structured Domains
+>GSTIMP1-cleav,0,8,#B22222,TAG
+>GSTIMP1-cleav,10,83,#32CD32,RRM
+>GSTIMP1-cleav,89,164,#32CD32,RRM
+>GSTIMP1-cleav,413,478,#1E90FF,KH
+>GSTIMP1-cleav,495,561,#1E90FF,KH
+>GSTIMP1-cleav,203,268,#1E90FF,KH
+>GSTIMP1-cleav,284,351,#1E90FF,KH
+
+# Disordered Domains
+>GSTIMP1-cleav,168,198,#C71585,Disordered
+>GSTIMP1-cleav,355,410,#FFD700,Disordered
