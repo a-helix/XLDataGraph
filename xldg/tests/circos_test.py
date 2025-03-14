@@ -1,10 +1,25 @@
-# from xldg.circos import *
-# from xldg.xl import *
-# from xldg.utils import *
-# from xldg.fasta import *
+import pytest
+from xldg.circos import *
+from xldg.xl import *
+from xldg.utils import *
+from xldg.fasta import *
 
 
-# # Current Working Directory
+Domain()
+Domain_Dataset()
+    filter_by_fasta
+Circos_Plot
+    save
+    set_xls_colors
+# def test_positive_list_specified_type_files_from_folder():
+#     files = PathUtil.list_specified_type_files_from_folder(CWD, '.fasta')
+#     assert len(files) == 3
+
+# def test_exception_generate_custom_list_with_int_ranges():
+#     with pytest.raises(ValueError, match = "ERROR! start value is greater than end value"):
+#         custom_list = DatasetUtil.generate_custom_list_with_int_ranges((3, 1), (7, 5), (11, 9))
+
+# Current Working Directory
 # CWD = os.path.join(os.getcwd(), "tests", "utils_test")
 
 # # Test Data Folder

@@ -5,7 +5,7 @@ from xldg.utils import PathUtil, DatasetUtil
 
 ### Test cases for PathUtil
 # Current Working Directory
-CWD = os.path.join(os.getcwd(), "tests", "utils_test")
+CWD = os.path.join(os.getcwd(), "tests", "test_data", "utils_test")
 
 def test_positive_list_specified_type_files_from_folder():
     files = PathUtil.list_specified_type_files_from_folder(CWD, '.fasta')
@@ -46,7 +46,7 @@ def test_ignore_argument_in_sort_filenames_by_first_integer():
 
 ### Test cases for DatasetUtil
 # Test Data Folder
-TDF = os.path.join(os.getcwd(), "tests", "test_data")
+TDF = os.path.join(os.getcwd(), "tests", "test_data", "zhrm")
 
 def test_read_merox_zhrm_files_from_path_list():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
