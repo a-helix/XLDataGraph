@@ -8,11 +8,13 @@ from typing import List, Tuple
 from xldg.xl import XL, XL_Dataset
 
 
-
 class PathUtil:
     @staticmethod
     def list_specified_type_files_from_folder(folder_path: str, file_format: str) -> List[str]:
         """List all files with a specific format from a folder."""
+        if not os.path.isdir(folder_path):
+            raise FileNotFoundError(f'Folder not found: {folder_path}')
+
         files = []
         for file in os.listdir(folder_path):
             if file.endswith(file_format):
@@ -35,8 +37,7 @@ class PathUtil:
 
 class DatasetUtil:
     @staticmethod
-    def read_merox_zhrm_files_from_path_list(path_list: List[str], linker: str = None) -> List['XL_Dataset']:
-        def _extract_merox_result_from_zhrm_file(path: str, linker: str) -> 'XL_Dataset':
+    def _extract_merox_result_from_zhrm_file(path: str, linker: str) -> 'XL_Dataset':
             xls = []
             software = 'MeroX'
 
@@ -53,17 +54,24 @@ class DatasetUtil:
             dataset.set_xls_site_count_to_one()
             return dataset
 
+    @staticmethod
+    def read_merox_zhrm_files_from_path_list(path_list: List[str], linker: str = None) -> List['XL_Dataset']:
         file_content = []
     
         for path in path_list:
+            if not os.path.isfile(path):
+                raise FileNotFoundError(f'File not found: {path}')
             print(f'Extracting: {path}')
-            file_content.append(_extract_merox_result_from_zhrm_file(path, linker))   
+            file_content.append(DatasetUtil._extract_merox_result_from_zhrm_file(path, linker))   
         return file_content
 
     @staticmethod
-    def filter_all_results_by_score(dataset: List['XL_Dataset'], threshold: int = 50) -> List['XL_Dataset']:
+    def filter_all_results_by_score(dataset: List['XL_Dataset'], min_score: int = 0, max_score: int = None) -> List['XL_Dataset']:
+        if  max_score is not None and max_score < min_score:
+            raise ValueError('ERROR! max_score is smaller than min_score')
+
         for data in dataset:
-            data.filter_by_score(threshold)
+            data.filter_by_score(min_score, max_score)
         return dataset    
 
     @staticmethod
@@ -85,26 +93,32 @@ class DatasetUtil:
         return combined_dataset
 
     @staticmethod
-    def fuse_list_of_xl_datsets(self, dataset_list: List['XL_Dataset']) -> 'XL_Dataset':
-        return XL_Dataset([element for sublist in dataset_list for element in sublist])
+    def combine_all_datasets(dataset_list: List['XL_Dataset']) -> 'XL_Dataset':
+        """Combines multiple XL_Dataset instances into a single XL_Dataset."""
+        combined_xls = []
+        for dataset in dataset_list:
+            combined_xls.extend(dataset.xls)
+        return XL_Dataset(combined_xls)
 
     @staticmethod
-    def generate_custom_list_with_int_ranges(self, *diapason: Tuple[int, int]) -> List[int]:
+    def generate_custom_list_with_int_ranges(*diapason: Tuple[int, int]) -> List[int]:
+        """Generates a list of integers by including the full range from start to end (inclusive)."""
         custom_list = []
 
-        for pair in diapason:
-            start = pair[0]
-            end = pair[1]
-    
-            for i in range(start, end):
-                custom_list.append(i)
+        for start, end in diapason:
+            if start > end:
+                raise ValueError("ERROR! start value is greater than end value")
+            custom_list.extend(range(start, end + 1))
 
         return custom_list
 
     @staticmethod
-    def combine_selected_datasets(self, dataset_list: List['XL_Dataset'], indexes: List[int]) -> 'XL_Dataset':
+    def combine_selected_datasets(dataset_list: List['XL_Dataset'], indexes: List[int]) -> 'XL_Dataset':
+        biggest_index = max(indexes)
+        if biggest_index >= len(dataset_list):
+            raise IndexError(f"ERROR! index {biggest_index} out of given dataset_list range")
+
         buffer = []
-    
         for x in indexes:
             buffer.append(dataset_list[x])
 

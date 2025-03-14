@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 
-from xldg.xl import XL_Dataset, Fasta_Dataset
+from xldg.xl import XL_Dataset
+from xldg.fasta import Fasta_Dataset
 
 
 class Domain:

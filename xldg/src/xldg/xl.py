@@ -1,5 +1,6 @@
 from typing import List, Tuple, Dict
 import os
+import sys
 import re
 
 
@@ -162,11 +163,12 @@ class XL_Dataset:
     def __len__(self):
         return self.size
     
-    def filter_by_score(self, threshold: int):
+    def filter_by_score(self, min_score: int, max_score: int):
         filtered_list = []
-        
+        if max_score is None:
+            max_score = sys.maxsize
         for xl in self.xls:
-            if xl.score >= threshold:
+            if xl.score >= min_score and xl.score <= max_score:
                 filtered_list.append(xl)
         
         unique_filtered_list = set(filtered_list)

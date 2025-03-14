@@ -1,5 +1,5 @@
 .vs/
-xldg/env/
+xldg/venv/
 xldg/env11/
 xldg/tests/data/
 examples/
