@@ -361,7 +361,7 @@ def download_alphafold_pdb(uniprot_id: str, prot_name: str, save_dir: str = "Alp
         print(f"Unknown error: {err}")
         return ""
 
-def download_protein_pdbs_of_edges(edges: List['Edge'], input_fasta_set: Set['Uniprot_Fasta'], min_path: int = 2, save_dir: str = "AlphaFold3_structures") -> List[str]:
+def download_protein_pdbs_of_edges(edges: List['Edge'], input_fasta_set: Set['FastaDataset'], min_path: int = 2, save_dir: str = "AlphaFold3_structures") -> List[str]:
     saved_files = []
 
     for edge in edges:

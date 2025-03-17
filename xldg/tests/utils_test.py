@@ -53,29 +53,29 @@ def test_read_merox_zhrm_files_from_path_list():
     folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
     assert len(folder_content) == 3
 
-def test_combine_replicas_in_xl_dataset():
+def test_combine_replicas_in_CrossLinkDataset():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
     folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
-    combined_replicas = DatasetUtil.combine_replicas_in_xl_dataset(folder_content, 3)
+    combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(folder_content, 3)
     assert len(combined_replicas) == 1
 
-def test_exception_combine_replicas_in_xl_dataset():
+def test_exception_combine_replicas_in_CrossLinkDataset():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
     folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
     with pytest.raises(Exception, match = "ERROR! dataset size 3 is not mutiple to n=4"):
-        combined_replicas = DatasetUtil.combine_replicas_in_xl_dataset(folder_content, 4)
+        combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(folder_content, 4)
 
-def test_xls_preservation_after_replicas_in_xl_dataset():
+def test_xls_preservation_after_replicas_in_CrossLinkDataset():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
     folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
-    combined_replicas = DatasetUtil.combine_replicas_in_xl_dataset(folder_content, 3)
+    combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(folder_content, 3)
     sum_of_xls = sum([len(data) for data in combined_replicas])
     assert len(combined_replicas[0]) == sum_of_xls
 
 def test_negative_filter_all_results_by_score():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
     folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
-    combined_replicas = DatasetUtil.combine_replicas_in_xl_dataset(folder_content, 3)
+    combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(folder_content, 3)
     before_filtering = DatasetUtil.filter_all_results_by_score(combined_replicas, 0)
     after_filtering = DatasetUtil.filter_all_results_by_score(combined_replicas, 0)
     assert len(before_filtering[0]) == len(after_filtering[0])
@@ -83,28 +83,28 @@ def test_negative_filter_all_results_by_score():
 def test_positive_min_argument_filter_all_results_by_score():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
     folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
-    combined_replicas = DatasetUtil.combine_replicas_in_xl_dataset(folder_content, 3)
+    combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(folder_content, 3)
     filtered_data = DatasetUtil.filter_all_results_by_score(combined_replicas, 150)
     assert len(filtered_data[0]) == 25
 
 def test_positive_max_argument_filter_all_results_by_score():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
     folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
-    combined_replicas = DatasetUtil.combine_replicas_in_xl_dataset(folder_content, 3)
+    combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(folder_content, 3)
     filtered_data = DatasetUtil.filter_all_results_by_score(combined_replicas, max_score=1)
     assert len(filtered_data[0]) == 66
 
 def test_positive_min_and_max_arguments_filter_all_results_by_score():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
     folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
-    combined_replicas = DatasetUtil.combine_replicas_in_xl_dataset(folder_content, 3)
+    combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(folder_content, 3)
     filtered_data = DatasetUtil.filter_all_results_by_score(combined_replicas, 120, 150)
     assert len(filtered_data[0]) == 36
 
 def test_exception_arguments_filter_all_results_by_score():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
     folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
-    combined_replicas = DatasetUtil.combine_replicas_in_xl_dataset(folder_content, 3)
+    combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(folder_content, 3)
     with pytest.raises(ValueError, match = "ERROR! max_score is smaller than min_score"):
         filtered_data = DatasetUtil.filter_all_results_by_score(combined_replicas, 1, 0)
     

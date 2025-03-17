@@ -1,14 +1,14 @@
-from xldg.xl import XL, XL_Dataset
-from xldg.circos import Circos, Circos_Config  
+from xldg.xl import CrossLink, CrossLinkDataset
+from xldg.circos import Circos, CircosConfig  
 from xldg.utils import PathUtil, DatasetUtil   
-from xldg.fasta import Fasta_Entity, Fasta_Dataset
+from xldg.fasta import Fasta, FastaDataset
 
 __version__ = "0.2.2"
-__all__ = ["XL", 
-           "XL_Dataset", 
+__all__ = ["CrossLink", 
+           "CrossLinkDataset", 
            "Circos", 
-           "Circos_Config", 
+           "CircosConfig", 
            "PathUtil", 
            "DatasetUtil", 
-           "Fasta_Entity",
-           "Fasta_Dataset"]
+           "Fasta",
+           "FastaDataset"]

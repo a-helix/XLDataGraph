@@ -5,7 +5,7 @@ import re
 
 from typing import List, Tuple
 
-from xldg.xl import XL, XL_Dataset
+from xldg.xl import CrossLink, CrossLinkDataset
 
 
 class PathUtil:
@@ -37,7 +37,7 @@ class PathUtil:
 
 class DatasetUtil:
     @staticmethod
-    def _extract_merox_result_from_zhrm_file(path: str, linker: str) -> 'XL_Dataset':
+    def _extract_merox_result_from_zhrm_file(path: str, linker: str) -> 'CrossLinkDataset':
             xls = []
             software = 'MeroX'
 
@@ -45,17 +45,17 @@ class DatasetUtil:
                 with zip_ref.open('Result.csv') as csv_file:
                     for line in io.TextIOWrapper(csv_file, encoding='utf-8'):
                         row = line.strip().split(';')
-                        xl = XL(row[7], row[6], row[8], row[9], row[20], 
+                        xl = CrossLink(row[7], row[6], row[8], row[9], row[20], 
                                 row[11], row[10], row[12], row[13], row[21],
                                 row[0], software, linker)
                         xls.append(xl)
 
-            dataset = XL_Dataset(xls)
+            dataset = CrossLinkDataset(xls)
             dataset.set_xls_site_count_to_one()
             return dataset
 
     @staticmethod
-    def read_merox_zhrm_files_from_path_list(path_list: List[str], linker: str = None) -> List['XL_Dataset']:
+    def read_merox_zhrm_files_from_path_list(path_list: List[str], linker: str = None) -> List['CrossLinkDataset']:
         file_content = []
     
         for path in path_list:
@@ -66,7 +66,7 @@ class DatasetUtil:
         return file_content
 
     @staticmethod
-    def filter_all_results_by_score(dataset: List['XL_Dataset'], min_score: int = 0, max_score: int = None) -> List['XL_Dataset']:
+    def filter_all_results_by_score(dataset: List['CrossLinkDataset'], min_score: int = 0, max_score: int = None) -> List['CrossLinkDataset']:
         if  max_score is not None and max_score < min_score:
             raise ValueError('ERROR! max_score is smaller than min_score')
 
@@ -75,7 +75,7 @@ class DatasetUtil:
         return dataset    
 
     @staticmethod
-    def combine_replicas_in_xl_dataset(dataset: List['XL_Dataset'], n=3) -> List['XL_Dataset']:
+    def combine_replicas_in_CrossLinkDataset(dataset: List['CrossLinkDataset'], n=3) -> List['CrossLinkDataset']:
         combined_dataset = []
         buffer = []
     
@@ -84,21 +84,21 @@ class DatasetUtil:
     
         for data in dataset:
             if (len(buffer) == n):
-                combined_dataset.append(XL_Dataset.combine_datasets(buffer))
+                combined_dataset.append(CrossLinkDataset.combine_datasets(buffer))
                 buffer.clear()
             buffer.append(data)
         
-        combined_dataset.append(XL_Dataset.combine_datasets(buffer))
+        combined_dataset.append(CrossLinkDataset.combine_datasets(buffer))
 
         return combined_dataset
 
     @staticmethod
-    def combine_all_datasets(dataset_list: List['XL_Dataset']) -> 'XL_Dataset':
-        """Combines multiple XL_Dataset instances into a single XL_Dataset."""
+    def combine_all_datasets(dataset_list: List['CrossLinkDataset']) -> 'CrossLinkDataset':
+        """Combines multiple CrossLinkDataset instances into a single CrossLinkDataset."""
         combined_xls = []
         for dataset in dataset_list:
             combined_xls.extend(dataset.xls)
-        return XL_Dataset(combined_xls)
+        return CrossLinkDataset(combined_xls)
 
     @staticmethod
     def generate_custom_list_with_int_ranges(*diapason: Tuple[int, int]) -> List[int]:
@@ -113,7 +113,7 @@ class DatasetUtil:
         return custom_list
 
     @staticmethod
-    def combine_selected_datasets(dataset_list: List['XL_Dataset'], indexes: List[int]) -> 'XL_Dataset':
+    def combine_selected_datasets(dataset_list: List['CrossLinkDataset'], indexes: List[int]) -> 'CrossLinkDataset':
         biggest_index = max(indexes)
         if biggest_index >= len(dataset_list):
             raise IndexError(f"ERROR! index {biggest_index} out of given dataset_list range")
@@ -122,4 +122,4 @@ class DatasetUtil:
         for x in indexes:
             buffer.append(dataset_list[x])
 
-        return XL_Dataset.combine_datasets(buffer) 
+        return CrossLinkDataset.combine_datasets(buffer) 

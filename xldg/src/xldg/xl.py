@@ -4,23 +4,23 @@ import sys
 import re
 
 
-class Protein_Chain_ID_Dataset:
-    def __init__(self, pcid_file_path: str):
-        self.path = pcid_file_path
+class ProteinChainDataset:
+    def __init__(self, pcd_file_path: str):
+        self.path = pcd_file_path
         self.pcids = {}
-        self._assign_pcids(pcid_file_path)
+        self._assign_pcids(pcd_file_path)
 
-    def _assign_pcids(self, path_to_pcid_file: str) -> None:
+    def _assign_pcids(self, path_to_pcd_file: str) -> None:
         try:
-            with open(path_to_pcid_file, 'r') as file:
+            with open(path_to_pcd_file, 'r') as file:
                 for line in file:
                     splited_line = line.replace('\n', '').split(',')
                     self.pcids[splited_line[0]] = splited_line[1:]
 
         except FileNotFoundError:
-            raise ValueError(f'Protein_Chain_ID_Dataset error: File at {path_to_pcid_file} was not found.')
+            raise ValueError(f'ERROR! File at {path_to_pcd_file} was not found.')
         except Exception as e:
-            raise ValueError(f'Protein_Chain_ID_Dataset error: {e}')
+            raise ValueError(f'ERROR! {e}')
 
     def __len__(self):
         return len(self.pcids)
@@ -34,7 +34,7 @@ class Protein_Chain_ID_Dataset:
     def __next__(self):
         return next(iter(self.pcids.items()))
 
-class XL:
+class CrossLink:
     def _remove_text_in_brackets(self, s: str) -> str:
         pattern = r'\(.*?\)'
         cleaned_string = re.sub(pattern, '', s)
@@ -119,8 +119,8 @@ class XL:
         return self.str_info
 
 
-class XL_Dataset:
-    def __init__(self, xls: List['XL']):        
+class CrossLinkDataset:
+    def __init__(self, xls: List['CrossLink']):        
         self.xls = xls
         self._remove_decoy_xls()
 
@@ -140,8 +140,8 @@ class XL_Dataset:
             raise StopIteration
 
     def __add__(self, other):
-        if not isinstance(other, XL_Dataset):
-            return NotImplemented  # Return if other is not a XL_Dataset
+        if not isinstance(other, CrossLinkDataset):
+            return NotImplemented  # Return if other is not a CrossLinkDataset
 
         combined_xls = self.xls + other.xls
         combined_xls_site_count = self.xls_site_count
@@ -152,7 +152,7 @@ class XL_Dataset:
             else:
                 combined_xls_site_count[site] += count
 
-        final = XL_Dataset(combined_xls)
+        final = CrossLinkDataset(combined_xls)
         final.xls_site_count = combined_xls_site_count
 
         return final
@@ -227,7 +227,7 @@ class XL_Dataset:
 
         self._update_xls_data(filtered_xls)
 
-    def _update_xls_data(self, xls: List['XL']) -> None:
+    def _update_xls_data(self, xls: List['CrossLink']) -> None:
         filtered_xls_site_count = {}
         for xl1 in xls:
             for xl2, count in self.xls_site_count.items():
@@ -242,7 +242,7 @@ class XL_Dataset:
         for key in self.xls_site_count.keys():
             self.xls_site_count[key] = 1  
         
-    def _quantify_elements(self, elements: List['XL']) -> Dict['XL', int]:
+    def _quantify_elements(self, elements: List['CrossLink']) -> Dict['CrossLink', int]:
         element_counts = {}
         for element in elements:
             if element not in element_counts:
@@ -274,7 +274,7 @@ class XL_Dataset:
             for xl, frequency in self.xls_site_count.items():
                 file.write(f'{xl.protein_1}{separator}{xl.peptide_1}{separator}{xl.from_1}{separator}{xl.to_1}{separator}{xl.site_1}{separator}{xl.protein_2}{separator}{xl.peptide_2}{separator}{xl.from_2}{separator}{xl.to_2}{separator}{xl.site_2}{separator}{xl.is_interprotein}{separator}{xl.is_homotypical}{separator}{frequency}\n')
 
-    def export_for_chimerax(self, path: str, name: str, pcid: Protein_Chain_ID_Dataset, diameter: int = 0.2, color_heterotypical_intraprotein_xl: str = '#21a2ed', color_heterotypical_interprotein_xl: str = '#00008B', color_homotypical_xl: str = '#ed2b21') -> None:
+    def export_for_chimerax(self, path: str, name: str, pcd: ProteinChainDataset, diameter: int = 0.2, color_heterotypical_intraprotein_xl: str = '#21a2ed', color_heterotypical_interprotein_xl: str = '#00008B', color_homotypical_xl: str = '#ed2b21') -> None:
         new_folder = os.path.join(path, name)
         os.makedirs(new_folder, exist_ok=True)
         
@@ -289,7 +289,7 @@ class XL_Dataset:
             for key, value in self.xls_site_count.items():
                 if value == xl_frequency:
                     if key.is_homotypical:
-                        chains = pcid[key.protein_1]
+                        chains = pcd[key.protein_1]
                         for c1 in chains:
                             for c2 in chains:
                                 # ChimeraX 1.8 doesn't render the whole file whithout this check
@@ -298,14 +298,14 @@ class XL_Dataset:
                                
                     if not key.is_homotypical:
                         if key.is_interprotein:
-                            chain1 = pcid[key.protein_1]
-                            chain2 = pcid[key.protein_2]
+                            chain1 = pcd[key.protein_1]
+                            chain2 = pcd[key.protein_2]
 
                             for c1 in chain1:
                                 for c2 in chain2:
                                     buffer_heterotypical_INTERprotein_xl += f'/{c1}:{key.num_site_1}@CA\t/{c2}:{key.num_site_2}@CA\t{color_heterotypical_interprotein_xl}\n'
                         else:
-                            chains = pcid[key.protein_1]
+                            chains = pcd[key.protein_1]
 
                             for c1 in chains:
                                 for c2 in chains:
@@ -335,54 +335,37 @@ class XL_Dataset:
 
         print(f'DB files saved to {new_folder}')
 
-    def export_for_alphalink(self, folder_path: str, file_name: str, FDR: float = 0.05, min_xl_replica: int = 1) -> None:
-        xl_sites = set(self.xls_site_count.keys())
-        buffer = ""
+    # def export_for_alphalink(self, folder_path: str, file_name: str, FDR: float = 0.05, min_xl_replica: int = 1) -> None:
+    #     xl_sites = set(self.xls_site_count.keys())
+    #     buffer = ""
 
-        site_1 = 0
-        site_2 = 0
+    #     site_1 = 0
+    #     site_2 = 0
 
-        for xl, count in self.xls_site_count.items():
-            if count < min_xl_replica:
-                continue
-            site_1 = xl.num_site_1
-            if "{" in xl.site_1:
-                site_1 += 1
+    #     for xl, count in self.xls_site_count.items():
+    #         if count < min_xl_replica:
+    #             continue
+    #         site_1 = xl.num_site_1
+    #         if "{" in xl.site_1:
+    #             site_1 += 1
 
-            site_2 = xl.num_site_2
-            if "}" in xl.site_2:
-                site_2 -= 1
+    #         site_2 = xl.num_site_2
+    #         if "}" in xl.site_2:
+    #             site_2 -= 1
 
-            buffer += f'{site_1}\t{site_2}\t{FDR}\n'
+    #         buffer += f'{site_1}\t{site_2}\t{FDR}\n'
 
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+    #     if not os.path.exists(folder_path):
+    #         os.makedirs(folder_path)
         
-        file_path = os.path.join(folder_path, file_name)
-        with open(file_path, "w") as file:
-            file.write(buffer)
+    #     file_path = os.path.join(folder_path, file_name)
+    #     with open(file_path, "w") as file:
+    #         file.write(buffer)
         
-        print(f'Alphalink crosslink file saved to {file_path}')
+    #     print(f'Alphalink crosslink file saved to {file_path}')
 
     @classmethod
-    def _filter_xls_site_count_by_list_of_xls(cls, xls_site_count: Dict['XL', int], list_of_xls: List['XL']) -> 'XL_Dataset':
-        filtered_count = {k: xls_site_count[k] for k in xls_site_count if k in list_of_xls}
-
-        return filtered_count
-
-    @classmethod
-    def combine_datasets(cls, datasets: List['XL_Dataset']) -> 'XL_Dataset':
-        combined_xls = None
-        for dataset in datasets:
-            if combined_xls is None:
-                combined_xls = dataset
-            else:
-                combined_xls += dataset
-
-        return combined_xls
-    
-    @classmethod
-    def unique_elements(cls, dataset1: 'XL_Dataset', dataset2: 'XL_Dataset') -> Tuple['XL_Dataset', 'XL_Dataset']:
+    def unique_elements(cls, dataset1: 'CrossLinkDataset', dataset2: 'CrossLinkDataset') -> Tuple['CrossLinkDataset', 'CrossLinkDataset']:
         count1 = dataset1.xls_site_count
         count2 = dataset1.xls_site_count
         
@@ -395,15 +378,18 @@ class XL_Dataset:
         # Create datasets from unique elements
         unique_dataset1 = cls(unique_to_dataset1)
         unique_dataset2 = cls(unique_to_dataset2)
-        
+
+        def _filter_xls_site_count(xls_site_count: Dict['CrossLink', int], list_of_xls: List['CrossLink']) -> 'CrossLinkDataset':
+            return {k: xls_site_count[k] for k in xls_site_count if k in list_of_xls}
+
         # Set the xls_site_count for the unique datasets
-        unique_dataset1.xls_site_count = XL_Dataset._filter_xls_site_count_by_list_of_xls(count1, unique_to_dataset1)
-        unique_dataset2.xls_site_count = XL_Dataset._filter_xls_site_count_by_list_of_xls(count2, unique_to_dataset2)
+        unique_dataset1.xls_site_count = _filter_xls_site_count(count1, unique_to_dataset1)
+        unique_dataset2.xls_site_count = _filter_xls_site_count(count2, unique_to_dataset2)
         
         return unique_dataset1, unique_dataset2
-    
+
     @classmethod
-    def common_elements(cls, dataset1: 'XL_Dataset', dataset2: 'XL_Dataset') -> Tuple['XL_Dataset', 'XL_Dataset']:
+    def common_elements(cls, dataset1: 'CrossLinkDataset', dataset2: 'CrossLinkDataset') -> Tuple['CrossLinkDataset', 'CrossLinkDataset']:
         count1 = dataset1.xls_site_count
         count2 = dataset2.xls_site_count
         
@@ -417,10 +403,19 @@ class XL_Dataset:
         common_dataset2 = cls(common_list2)
         
         # Set the xls_site_count for the common datasets
-        common_dataset1.xls_site_count = XL_Dataset._filter_xls_site_count_by_list_of_xls(count1, common_elements)
-        common_dataset2.xls_site_count = XL_Dataset._filter_xls_site_count_by_list_of_xls(count2, common_elements)
+        common_dataset1.xls_site_count = CrossLinkDataset._filter_xls_site_count_by_list_of_xls(count1, common_elements)
+        common_dataset2.xls_site_count = CrossLinkDataset._filter_xls_site_count_by_list_of_xls(count2, common_elements)
         
         return common_dataset1, common_dataset2
 
+    
+    @classmethod
+    def combine_datasets(cls, datasets: List['CrossLinkDataset']) -> 'CrossLinkDataset':
+        combined_xls = None
+        for dataset in datasets:
+            if combined_xls is None:
+                combined_xls = dataset
+            else:
+                combined_xls += dataset
 
-
+        return combined_xls

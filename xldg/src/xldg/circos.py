@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 
-from xldg.xl import XL_Dataset
-from xldg.fasta import Fasta_Dataset
+from xldg.xl import CrossLinkDataset
+from xldg.fasta import FastaDataset
 
 
 class Domain:
@@ -31,7 +31,7 @@ class Domain:
             raise ValueError(f'Unknown domain format: {input}')
 
 
-class Domain_Dataset:
+class DomainDataset:
     def __init__(self, domain_files_paths_list: List[str]):
         self.domains = self._extract_all_domain_content_from_folder(domain_files_paths_list)
         self._size = len(self.domains)
@@ -71,10 +71,10 @@ class Domain_Dataset:
         else:
             raise StopIteration
 
-    def filter_by_fasta(self, fasta_dataset: 'Fasta_Dataset') -> None:
+    def filter_by_fasta(self, FastaDataset: 'FastaDataset') -> None:
         filtered_domains = []
         for domain in self.domains:
-            for fasta in fasta_dataset:
+            for fasta in FastaDataset:
                 if domain.gene == fasta.prot_gene:
                     filtered_domains.append(domain)
                     break
@@ -83,11 +83,11 @@ class Domain_Dataset:
         self._size = len(self.domains)
 
 
-class Circos_Config:
+class CircosConfig:
         def __init__(self, 
                  # File input 
-                 fasta: Fasta_Dataset, 
-                 domains: Domain_Dataset = None,
+                 fasta: FastaDataset, 
+                 domains: DomainDataset = None,
                  # Text input 
                  legend: str = None, 
                  title: str = None, 
@@ -139,7 +139,7 @@ class Circos_Config:
 
 
 class Circos_Plot:  
-    def __init__(self, xls: XL_Dataset, config: Circos_Config):
+    def __init__(self, xls: 'CrossLinkDataset', config: 'CircosConfig'):
         self.config = copy.deepcopy(config)
         self.xls = copy.deepcopy(xls)
 
