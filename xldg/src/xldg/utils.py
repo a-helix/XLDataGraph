@@ -2,6 +2,7 @@ import zipfile
 import os
 import io
 import re
+import sys
 
 from typing import List, Tuple
 
@@ -66,8 +67,8 @@ class DatasetUtil:
         return file_content
 
     @staticmethod
-    def filter_all_results_by_score(dataset: List['CrossLinkDataset'], min_score: int = 0, max_score: int = None) -> List['CrossLinkDataset']:
-        if  max_score is not None and max_score < min_score:
+    def filter_all_by_score(dataset: List['CrossLinkDataset'], min_score: int = 0, max_score: int = sys.maxsize) -> List['CrossLinkDataset']:
+        if  max_score < min_score:
             raise ValueError('ERROR! max_score is smaller than min_score')
 
         for data in dataset:
@@ -75,7 +76,7 @@ class DatasetUtil:
         return dataset    
 
     @staticmethod
-    def combine_replicas_in_CrossLinkDataset(dataset: List['CrossLinkDataset'], n=3) -> List['CrossLinkDataset']:
+    def combine_replicas_in_CrossLinkDataset(dataset: List['CrossLinkDataset'], n = 3) -> List['CrossLinkDataset']:
         combined_dataset = []
         buffer = []
     

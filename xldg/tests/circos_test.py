@@ -38,7 +38,7 @@
 # # sorted_zhrm_file_path = PathUtil.sort_filenames_by_first_integer(zhrm_folder_path)
 # # folder_content =  DatasetUtil.read_merox_zhrm_files_from_path_list(sorted_zhrm_file_path, 'DSBU')
 
-# # filtered_score_folder_content =  DatasetUtil.filter_all_results_by_score(folder_content, threshold=0)
+# # filtered_score_folder_content =  DatasetUtil.filter_all_by_score(folder_content, threshold=0)
     
 # # combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(filtered_score_folder_content, n=4)
 

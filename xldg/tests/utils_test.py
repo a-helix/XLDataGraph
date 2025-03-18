@@ -3,46 +3,46 @@ import os
 import random
 from xldg.utils import PathUtil, DatasetUtil
 
-### Test cases for PathUtil
-# Current Working Directory
-CWD = os.path.join(os.getcwd(), "tests", "test_data", "utils_test")
+class TestPathUtil:
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        # Current Working Directory
+        self.CWD = os.path.join(os.getcwd(), "tests", "test_data", "utils_test")
+        self.none_files = PathUtil.list_specified_type_files_from_folder(self.CWD, '.none')
+        self.fasta_files = PathUtil.list_specified_type_files_from_folder(self.CWD, '.fasta')
 
-def test_positive_list_specified_type_files_from_folder():
-    files = PathUtil.list_specified_type_files_from_folder(CWD, '.fasta')
-    assert len(files) == 3
+    def test_positive_list_specified_type_files_from_folder(self):
+        assert len(self.fasta_files) == 3
 
-def test_negative_list_specified_type_files_from_folder():
-    files = PathUtil.list_specified_type_files_from_folder(CWD, '.none')
-    assert len(files) == 0
+    def test_negative_list_specified_type_files_from_folder(self):
+        assert len(self.none_files) == 0
 
-def test_exception_in_list_specified_type_files_from_folder():
-    folder = "non_existent_folder"
-    with pytest.raises(FileNotFoundError):
-        PathUtil.list_specified_type_files_from_folder(folder, ".zhrm")
+    def test_exception_in_list_specified_type_files_from_folder(self):
+        folder = "non_existent_folder"
+        with pytest.raises(FileNotFoundError):
+            PathUtil.list_specified_type_files_from_folder(folder, ".zhrm")
     
 
-def test_positive_sort_filenames_by_first_integer():
-    files = PathUtil.list_specified_type_files_from_folder(CWD, '.fasta')
-    random.shuffle(files)
-    sorted_files = PathUtil.sort_filenames_by_first_integer(files)
-    reference = [os.path.join(CWD, 'BSA_1.fasta'),
-                 os.path.join(CWD, '2_BSA.fasta'),
-                 os.path.join(CWD, 'BSA_3.fasta')]
-    assert sorted_files == reference
+    def test_positive_sort_filenames_by_first_integer(self):
+        random.shuffle(self.fasta_files)
+        sorted_files = PathUtil.sort_filenames_by_first_integer(self.fasta_files)
+        reference = [os.path.join(self.CWD, 'BSA_1.fasta'),
+                     os.path.join(self.CWD, '2_BSA.fasta'),
+                     os.path.join(self.CWD, 'BSA_3.fasta')]
+        assert sorted_files == reference
 
-def test_negative_sort_filenames_by_first_integer():
-    files = PathUtil.list_specified_type_files_from_folder(CWD, '.none')
-    sorted_files = PathUtil.sort_filenames_by_first_integer(files)
-    reference = []
-    assert sorted_files == reference
+    def test_negative_sort_filenames_by_first_integer(self):
+        sorted_files = PathUtil.sort_filenames_by_first_integer(self.none_files)
+        reference = []
+        assert sorted_files == reference
 
-def test_ignore_argument_in_sort_filenames_by_first_integer():
-    files = PathUtil.list_specified_type_files_from_folder(CWD, '.txt')
-    sorted_files = PathUtil.sort_filenames_by_first_integer(files, ignore = 'abcd1234_')
-    reference = [os.path.join(CWD, 'abcd1234_file1.txt'),
-                 os.path.join(CWD, 'abcd1234_file2.txt'),
-                 os.path.join(CWD, 'abcd1234_file3.txt')]
-    assert sorted_files == reference
+    def test_ignore_argument_in_sort_filenames_by_first_integer(self):
+        files = PathUtil.list_specified_type_files_from_folder(self.CWD, '.txt')
+        sorted_files = PathUtil.sort_filenames_by_first_integer(files, ignore = 'abcd1234_')
+        reference = [os.path.join(self.CWD, 'abcd1234_file1.txt'),
+                     os.path.join(self.CWD, 'abcd1234_file2.txt'),
+                     os.path.join(self.CWD, 'abcd1234_file3.txt')]
+        assert sorted_files == reference
 
 ### Test cases for DatasetUtil
 # Test Data Folder
@@ -72,41 +72,40 @@ def test_xls_preservation_after_replicas_in_CrossLinkDataset():
     sum_of_xls = sum([len(data) for data in combined_replicas])
     assert len(combined_replicas[0]) == sum_of_xls
 
-def test_negative_filter_all_results_by_score():
+def test_negative_filter_all_by_score():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
     folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
     combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(folder_content, 3)
-    before_filtering = DatasetUtil.filter_all_results_by_score(combined_replicas, 0)
-    after_filtering = DatasetUtil.filter_all_results_by_score(combined_replicas, 0)
-    assert len(before_filtering[0]) == len(after_filtering[0])
+    after_filtering = DatasetUtil.filter_all_by_score(combined_replicas, 0)
+    assert len(combined_replicas[0]) == len(after_filtering[0])
 
-def test_positive_min_argument_filter_all_results_by_score():
+def test_positive_min_argument_filter_all_by_score():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
     folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
     combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(folder_content, 3)
-    filtered_data = DatasetUtil.filter_all_results_by_score(combined_replicas, 150)
+    filtered_data = DatasetUtil.filter_all_by_score(combined_replicas, 150)
     assert len(filtered_data[0]) == 25
 
-def test_positive_max_argument_filter_all_results_by_score():
+def test_positive_max_argument_filter_all_by_score():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
     folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
     combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(folder_content, 3)
-    filtered_data = DatasetUtil.filter_all_results_by_score(combined_replicas, max_score=1)
+    filtered_data = DatasetUtil.filter_all_by_score(combined_replicas, max_score=1)
     assert len(filtered_data[0]) == 66
 
-def test_positive_min_and_max_arguments_filter_all_results_by_score():
+def test_positive_min_and_max_arguments_filter_all_by_score():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
     folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
     combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(folder_content, 3)
-    filtered_data = DatasetUtil.filter_all_results_by_score(combined_replicas, 120, 150)
+    filtered_data = DatasetUtil.filter_all_by_score(combined_replicas, 120, 150)
     assert len(filtered_data[0]) == 36
 
-def test_exception_arguments_filter_all_results_by_score():
+def test_exception_arguments_filter_all_by_score():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
     folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
     combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(folder_content, 3)
     with pytest.raises(ValueError, match = "ERROR! max_score is smaller than min_score"):
-        filtered_data = DatasetUtil.filter_all_results_by_score(combined_replicas, 1, 0)
+        filtered_data = DatasetUtil.filter_all_by_score(combined_replicas, 1, 0)
     
 def test_combine_all_datasets():
     zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')

@@ -7,32 +7,35 @@ import re
 class ProteinChainDataset:
     def __init__(self, pcd_file_path: str):
         self.path = pcd_file_path
-        self.pcids = {}
-        self._assign_pcids(pcd_file_path)
+        self.pcds = {}
+        self._assign_pcds(pcd_file_path)
 
-    def _assign_pcids(self, path_to_pcd_file: str) -> None:
+    def _assign_pcds(self, path_to_pcd_file: str) -> None:
         try:
             with open(path_to_pcd_file, 'r') as file:
                 for line in file:
-                    splited_line = line.replace('\n', '').split(',')
-                    self.pcids[splited_line[0]] = splited_line[1:]
+                    splited_line = line.replace('\n', '').replace(' ', '').split(',')
+
+                    if len(splited_line) < 2:
+                        raise ValueError(
+                            f'ERROR! Wrong data format in {path_to_pcd_file}')
+
+                    self.pcds[splited_line[0]] = splited_line[1:]
 
         except FileNotFoundError:
-            raise ValueError(f'ERROR! File at {path_to_pcd_file} was not found.')
-        except Exception as e:
-            raise ValueError(f'ERROR! {e}')
+            raise FileNotFoundError(f'ERROR! File at {path_to_pcd_file} was not found.')
 
     def __len__(self):
-        return len(self.pcids)
+        return len(self.pcds)
 
     def __iter__(self):
-        return iter(self.pcids.items())
+        return iter(self.pcds.items())
 
     def __getitem__(self, key):
-        return self.pcids[key]
+        return self.pcds[key]
 
     def __next__(self):
-        return next(iter(self.pcids.items()))
+        return next(iter(self.pcds.items()))
 
 class CrossLink:
     def _remove_text_in_brackets(self, s: str) -> str:
@@ -163,10 +166,9 @@ class CrossLinkDataset:
     def __len__(self):
         return self.size
     
-    def filter_by_score(self, min_score: int, max_score: int):
+    def filter_by_score(self, min_score: int = 0, max_score: int = sys.maxsize):
         filtered_list = []
-        if max_score is None:
-            max_score = sys.maxsize
+
         for xl in self.xls:
             if xl.score >= min_score and xl.score <= max_score:
                 filtered_list.append(xl)
@@ -182,12 +184,15 @@ class CrossLinkDataset:
         self.size = len(self.xls)
         self.xls_site_count = filterered_xls_site_count
 
-    def filter_by_min_xl_replica(self, min_xl_replica: int):
+    def filter_by_replica(self, min_rep: int = 1, max_rep: int = sys.maxsize):
+        if min_rep > max_rep:
+            raise ValueError('ERROR! max_rep is smaller than min_rep')
+
         filtered_xls_site_count = {}
         filtered_xls = []
 
         for xl1, count in self.xls_site_count.items():
-            if count >= min_xl_replica:
+            if count >= min_rep and count <= max_rep:
                 filtered_xls_site_count[xl1] = count
                 for xl2 in self.xls:
                     if xl2 == xl1:
