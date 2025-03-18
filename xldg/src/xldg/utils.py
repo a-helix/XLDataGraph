@@ -76,7 +76,7 @@ class DatasetUtil:
         return dataset    
 
     @staticmethod
-    def combine_replicas_in_CrossLinkDataset(dataset: List['CrossLinkDataset'], n = 3) -> List['CrossLinkDataset']:
+    def combine_replicas_in_xl_datasets(dataset: List['CrossLinkDataset'], n = 3) -> List['CrossLinkDataset']:
         combined_dataset = []
         buffer = []
     

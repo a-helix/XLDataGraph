@@ -40,7 +40,7 @@
 
 # # filtered_score_folder_content =  DatasetUtil.filter_all_by_score(folder_content, threshold=0)
     
-# # combined_replicas = DatasetUtil.combine_replicas_in_CrossLinkDataset(filtered_score_folder_content, n=4)
+# # combined_replicas = DatasetUtil.combine_replicas_in_xl_datasets(filtered_score_folder_content, n=4)
 
 # # dataset_1 = combined_replicas[0]
 # # dataset_2 = combined_replicas[1]

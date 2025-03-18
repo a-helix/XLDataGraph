@@ -65,8 +65,10 @@ class TestFasta:
 class TestFastaDataset:
     @pytest.fixture(autouse=True)
     def setup(self):
-        self.CWD = os.path.join(os.getcwd(), "tests", "test_data", "fasta") # Current Working Directory
-        TDF = os.path.join(os.getcwd(), "tests", "test_data", "zhrm") # Test Data Folder
+        # Current Working Directory
+        self.CWD = os.path.join(os.getcwd(), "tests", "test_data", "fasta")
+        # Test Data Folder
+        TDF = os.path.join(os.getcwd(), "tests", "test_data", "zhrm")
 
         self.fasta_files = PathUtil.list_specified_type_files_from_folder(self.CWD, ".fasta")
         self.fasta_dataset = FastaDataset(self.fasta_files, "Custom", False)
