@@ -52,7 +52,7 @@ class DatasetUtil:
                         xls.append(xl)
 
             dataset = CrossLinkDataset(xls)
-            dataset.set_xls_site_count_to_one()
+            dataset.set_xls_counter_to_one()
             return dataset
 
     @staticmethod
@@ -96,10 +96,13 @@ class DatasetUtil:
     @staticmethod
     def combine_all_datasets(dataset_list: List['CrossLinkDataset']) -> 'CrossLinkDataset':
         """Combines multiple CrossLinkDataset instances into a single CrossLinkDataset."""
-        combined_xls = []
+        combined_xls = None
         for dataset in dataset_list:
-            combined_xls.extend(dataset.xls)
-        return CrossLinkDataset(combined_xls)
+            if combined_xls is None:
+                combined_xls = dataset
+            else:
+                combined_xls += dataset
+        return combined_xls
 
     @staticmethod
     def generate_custom_list_with_int_ranges(*diapason: Tuple[int, int]) -> List[int]:

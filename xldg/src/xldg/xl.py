@@ -1,7 +1,8 @@
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Set
 import os
 import sys
 import re
+import copy
 
 
 class ProteinChainDataset:
@@ -128,7 +129,7 @@ class CrossLinkDataset:
         self._remove_decoy_xls()
 
         self.size = len(self.xls)
-        self.xls_site_count = self._quantify_elements(xls)
+        self.xls_site_count = self._quantify_elements(self.xls)
 
     def __iter__(self):
         self._index = 0
@@ -243,7 +244,7 @@ class CrossLinkDataset:
         self.size = len(self.xls)
         self.xls_site_count = filtered_xls_site_count
 
-    def set_xls_site_count_to_one(self) -> None:
+    def set_xls_counter_to_one(self) -> None:
         for key in self.xls_site_count.keys():
             self.xls_site_count[key] = 1  
         
@@ -262,7 +263,7 @@ class CrossLinkDataset:
         for xl in self.xls:
             if xl.software == 'MeroX':
                 # Ignore MeroX decoy matches
-                if xl.protein_1.startswith('DEC_') or xl.protein_2.startswith('DEC_'):
+                if 'DEC_' in xl.protein_1 or 'DEC_' in xl.protein_2:
                     continue
             buffer.append(xl)
         self.xls = buffer
@@ -272,102 +273,115 @@ class CrossLinkDataset:
         os.makedirs(path, exist_ok=True)
 
         str_file = file
-        header = f'protein_1{separator}peptide_1{separator}from_1{separator}to_1{separator}site_1{separator}protein_2{separator}peptide_2{separator}from_2{separator}to_2{separator}site_2{separator}interprotein{separator}homotypical{separator}replicas\n'
+        header = (
+            f"software{separator}protein_1{separator}peptide_1{separator}from_1{separator}"
+            f"to_1{separator}site_1{separator}protein_2{separator}peptide_2{separator}"
+            f"from_2{separator}to_2{separator}site_2{separator}interprotein{separator}"
+            f"homotypical{separator}replicas\n"
+        )
 
         with open(file, 'w') as file:
             file.write(header)
             for xl, frequency in self.xls_site_count.items():
-                file.write(f'{xl.protein_1}{separator}{xl.peptide_1}{separator}{xl.from_1}{separator}{xl.to_1}{separator}{xl.site_1}{separator}{xl.protein_2}{separator}{xl.peptide_2}{separator}{xl.from_2}{separator}{xl.to_2}{separator}{xl.site_2}{separator}{xl.is_interprotein}{separator}{xl.is_homotypical}{separator}{frequency}\n')
+                file.write(
+                    f"{xl.software}{separator}{xl.protein_1}{separator}{xl.peptide_1}{separator}"
+                    f"{xl.from_1}{separator}{xl.to_1}{separator}{xl.site_1}{separator}"
+                    f"{xl.protein_2}{separator}{xl.peptide_2}{separator}{xl.from_2}{separator}"
+                    f"{xl.to_2}{separator}{xl.site_2}{separator}{xl.is_interprotein}{separator}"
+                    f"{xl.is_homotypical}{separator}{frequency}\n"
+                )
 
-    def export_for_chimerax(self, path: str, name: str, pcd: ProteinChainDataset, diameter: int = 0.2, color_heterotypical_intraprotein_xl: str = '#21a2ed', color_heterotypical_interprotein_xl: str = '#00008B', color_homotypical_xl: str = '#ed2b21') -> None:
-        new_folder = os.path.join(path, name)
-        os.makedirs(new_folder, exist_ok=True)
-        
-        xl_frequencies = set(self.xls_site_count.values())
+    def _validate_terminus_sites(self, crosslink: 'CrossLink') -> 'CrossLink':
+        buffer = copy.deepcopy(crosslink)
+        if '{' in buffer.site_1:
+            buffer.num_site_1 += 1 
+        if '}' in buffer.site_1:
+            buffer.num_site_1 -= 1 
+        if '{' in buffer.site_2:
+            buffer.num_site_2 += 1 
+        if '}' in buffer.site_2:
+            buffer.num_site_2 -= 1 
+        return buffer
+
+    def export_for_chimerax(
+        self, 
+        pcd: ProteinChainDataset, 
+        folder_path: str, 
+        file_name: str = '',  
+        diameter: float = 0.2, 
+        dashes: int = 1,
+        color_heterotypical_intraprotein_xl: str = "#21a2ed", 
+        color_heterotypical_interprotein_xl: str = "#00008B", 
+        color_homotypical_xl: str = "#ed2b21"
+    ) -> None:
+        """
+        Exports cross-links for visualization in ChimeraX.
+
+        Parameters:
+            pcd (ProteinChainDataset): A dataset mapping proteins to their chain identifiers.
+            folder_path (str): The directory where the output files will be saved.
+            file_name (str, optional): Base name for the output files. Defaults to an empty string.
+            diameter (float, optional): The radius of the cross-link visualization in ChimeraX. Default is 0.2.
+            dashes (int, optional): The number of dashes used for rendering cross-links in ChimeraX. Default is 1.
+            color_heterotypical_intraprotein_xl (str, optional): Color for intra-protein heterotypical cross-links. Default is "#21a2ed".
+            color_heterotypical_interprotein_xl (str, optional): Color for inter-protein heterotypical cross-links. Default is "#00008B".
+            color_homotypical_xl (str, optional): Color for homotypical cross-links. Default is "#ed2b21".
+
+        Returns:
+            None: Writes cross-link data to `.pb` files for ChimeraX visualization.
+
+        The output files are saved in the specified folder and contain cross-links formatted for ChimeraX.
+        The file names follow this format:
+            - {file_name}_heterotypical_interprotein_xl_{frequency}_rep.pb
+            - {file_name}_heterotypical_intraprotein_xl_{frequency}_rep.pb
+            - {file_name}_homotypical_xl_{frequency}_rep.pb
+        """
+
+        os.makedirs(folder_path, exist_ok=True)
+        xl_frequencies: Set[int] = set(self.xls_site_count.values())
+
+        def _write_to_pb_file(buffer: str, filename: str):
+            print(f'Writing {len(buffer)} crosslinks to {filename}')
+            if buffer:
+                file_path = os.path.join(folder_path, filename)
+                with open(file_path, "w") as file:
+                    file.write(f"; dashes = {dashes}\n; radius = {diameter}\n{buffer}")
 
         for xl_frequency in xl_frequencies:
-            parameters = f'; dashes = 1\n; radius = {diameter}\n'
-            buffer_heterotypical_INTRAprotein_xl = ''
-            buffer_heterotypical_INTERprotein_xl = ''
-            buffer_homotypical_xl = ''
-            
+            buffer_homotypical_xl = []
+            buffer_heterotypical_intra_xl = []
+            buffer_heterotypical_inter_xl = []
+
             for key, value in self.xls_site_count.items():
-                if value == xl_frequency:
-                    if key.is_homotypical:
-                        chains = pcd[key.protein_1]
-                        for c1 in chains:
-                            for c2 in chains:
-                                # ChimeraX 1.8 doesn't render the whole file whithout this check
-                                if c1 != c2: 
-                                    buffer_homotypical_xl += f'/{c1}:{key.num_site_1}@CA\t/{c2}:{key.num_site_2}@CA\t{color_homotypical_xl}\n'
-                               
-                    if not key.is_homotypical:
-                        if key.is_interprotein:
-                            chain1 = pcd[key.protein_1]
-                            chain2 = pcd[key.protein_2]
+                if value != xl_frequency:
+                    continue
 
-                            for c1 in chain1:
-                                for c2 in chain2:
-                                    buffer_heterotypical_INTERprotein_xl += f'/{c1}:{key.num_site_1}@CA\t/{c2}:{key.num_site_2}@CA\t{color_heterotypical_interprotein_xl}\n'
-                        else:
-                            chains = pcd[key.protein_1]
+                crosslink = self._validate_terminus_sites(key)
+                chains = pcd[crosslink.protein_1]
 
-                            for c1 in chains:
-                                for c2 in chains:
-                                    buffer_heterotypical_INTRAprotein_xl += f'/{c1}:{key.num_site_1}@CA\t/{c2}:{key.num_site_2}@CA\t{color_heterotypical_intraprotein_xl}\n'
+                if crosslink.is_homotypical:
+                    for c1 in chains:
+                        for c2 in chains:
+                            if c1 != c2:  # Ensure unique chain pairing
+                                buffer_homotypical_xl.append(f"/{c1}:{crosslink.num_site_1}@CA\t/{c2}:{crosslink.num_site_2}@CA\t{color_homotypical_xl}")
 
+                elif crosslink.is_interprotein:
+                    chain1, chain2 = pcd[crosslink.protein_1], pcd[crosslink.protein_2]
+                    for c1 in chain1:
+                        for c2 in chain2:
+                            buffer_heterotypical_inter_xl.append(f"/{c1}:{crosslink.num_site_1}@CA\t/{c2}:{crosslink.num_site_2}@CA\t{color_heterotypical_interprotein_xl}")
 
-            file_path = f'{new_folder}\\{name}_heterotypical_interaprotein_xl_{str(xl_frequency)}.pb'
+                else:  # Intraprotein heterotypical
+                    for c1 in chains:
+                        for c2 in chains:
+                            buffer_heterotypical_intra_xl.append(f"/{c1}:{crosslink.num_site_1}@CA\t/{c2}:{crosslink.num_site_2}@CA\t{color_heterotypical_intraprotein_xl}")
 
-            if buffer_heterotypical_INTERprotein_xl != '':
-                with open(file_path, 'w') as file:
-                    buffer_heterotypical_INTERprotein_xl = parameters + buffer_heterotypical_INTERprotein_xl
-                    file.write(buffer_heterotypical_INTERprotein_xl)
+            # Writing to files
+            _write_to_pb_file("\n".join(buffer_heterotypical_inter_xl), f"{file_name}_heterotypical_interprotein_xl_{xl_frequency}_rep.pb")
+            _write_to_pb_file("\n".join(buffer_heterotypical_intra_xl), f"{file_name}_heterotypical_intraprotein_xl_{xl_frequency}_rep.pb")
+            _write_to_pb_file("\n".join(buffer_homotypical_xl), f"{file_name}_homotypical_xl_{xl_frequency}_rep.pb")
 
-            file_path = f'{new_folder}\\{name}_heterotypical_intraprotein_xl_{str(xl_frequency)}.pb'
-
-            if buffer_heterotypical_INTRAprotein_xl != '':
-                with open(file_path, 'w') as file:
-                    buffer_heterotypical_INTRAprotein_xl = parameters + buffer_heterotypical_INTRAprotein_xl
-                    file.write(buffer_heterotypical_INTRAprotein_xl)
-                
-            file_path = f'{new_folder}\\{name}_homotypical_xl_{str(xl_frequency)}.pb'
-
-            if buffer_homotypical_xl != '':
-                with open(file_path, 'w') as file:
-                    buffer_homotypical_xl = parameters + buffer_homotypical_xl
-                    file.write(buffer_homotypical_xl)
-
-        print(f'DB files saved to {new_folder}')
-
-    # def export_for_alphalink(self, folder_path: str, file_name: str, FDR: float = 0.05, min_xl_replica: int = 1) -> None:
-    #     xl_sites = set(self.xls_site_count.keys())
-    #     buffer = ""
-
-    #     site_1 = 0
-    #     site_2 = 0
-
-    #     for xl, count in self.xls_site_count.items():
-    #         if count < min_xl_replica:
-    #             continue
-    #         site_1 = xl.num_site_1
-    #         if "{" in xl.site_1:
-    #             site_1 += 1
-
-    #         site_2 = xl.num_site_2
-    #         if "}" in xl.site_2:
-    #             site_2 -= 1
-
-    #         buffer += f'{site_1}\t{site_2}\t{FDR}\n'
-
-    #     if not os.path.exists(folder_path):
-    #         os.makedirs(folder_path)
-        
-    #     file_path = os.path.join(folder_path, file_name)
-    #     with open(file_path, "w") as file:
-    #         file.write(buffer)
-        
-    #     print(f'Alphalink crosslink file saved to {file_path}')
+        print(f"DB files saved to {folder_path}")
 
     @classmethod
     def unique_elements(cls, dataset1: 'CrossLinkDataset', dataset2: 'CrossLinkDataset') -> Tuple['CrossLinkDataset', 'CrossLinkDataset']:
@@ -393,6 +407,8 @@ class CrossLinkDataset:
         
         return unique_dataset1, unique_dataset2
 
+
+
     @classmethod
     def common_elements(cls, dataset1: 'CrossLinkDataset', dataset2: 'CrossLinkDataset') -> Tuple['CrossLinkDataset', 'CrossLinkDataset']:
         count1 = dataset1.xls_site_count
@@ -403,13 +419,11 @@ class CrossLinkDataset:
         common_list1 = [xl for xl in dataset1.xls if xl in common_elements]
         common_list2 = [xl for xl in dataset2.xls if xl in common_elements]
         
-        # Create datasets from common elements
         common_dataset1 = cls(common_list1)
         common_dataset2 = cls(common_list2)
-        
-        # Set the xls_site_count for the common datasets
-        common_dataset1.xls_site_count = CrossLinkDataset._filter_xls_site_count_by_list_of_xls(count1, common_elements)
-        common_dataset2.xls_site_count = CrossLinkDataset._filter_xls_site_count_by_list_of_xls(count2, common_elements)
+
+        common_dataset1.xls_site_count = {k: count1[k] for k in count1 if k in common_elements}
+        common_dataset2.xls_site_count = {k: count2[k] for k in count2 if k in common_elements}
         
         return common_dataset1, common_dataset2
 
