@@ -3,6 +3,7 @@ import os
 import random
 from xldg.utils import PathUtil, DatasetUtil
 
+
 class TestPathUtil:
     @pytest.fixture(autouse=True)
     def setup(self):

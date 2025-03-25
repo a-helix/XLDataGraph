@@ -1,9 +1,12 @@
 ﻿import colorsys
-from typing import List, Iterator
+from ctypes import ArgumentError
+from typing import List, Iterator, Tuple
 import os
+import sys
 import copy
+import re
 
-from pycirclize import Circos
+from pycirclize import Circos as circos
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -34,9 +37,9 @@ class Domain:
 class DomainDataset:
     def __init__(self, domain_files_paths_list: List[str]):
         self.domains = self._extract_all_domain_content_from_folder(domain_files_paths_list)
-        self._size = len(self.domains)
         self._index = 0  # Initialize an index for iteration
-        
+        self._size = len(self.domains)
+
     def _extract_all_domain_content_from_folder(self, domain_files_paths_list: List[str]) -> List['Domain']:
         domains = []
         
@@ -46,7 +49,7 @@ class DomainDataset:
                 with open(file_path, 'r') as file:
                     for line in file:
                         # Ignore comments and empty lines
-                        if line[0] == '#' or len(line) == 0:
+                        if line[0] == '#' or not line.strip():
                             continue
                         domains.append(Domain(line))
             except FileNotFoundError:
@@ -57,7 +60,7 @@ class DomainDataset:
         return domains
 
     def __len__(self):
-        return self._size
+        return len(self.domains)
 
     def __iter__(self) -> Iterator['Domain']:
         self._index = 0  # Reset index for new iteration
@@ -80,7 +83,6 @@ class DomainDataset:
                     break
 
         self.domains = filtered_domains
-        self._size = len(self.domains)
 
 
 class CircosConfig:
@@ -92,24 +94,27 @@ class CircosConfig:
                  legend: str = None, 
                  title: str = None, 
                  # Figure configs 
+                 figsize: Tuple[float, float] = [9, 9],
                  lable_interval: int = 20, 
                  space_between_sectors: int = 5,
-                 domain_legend_distance: float = 1.3,
+                 domain_legend_distance: float = 1.25,
                  xl_legend_distance: float = 1.3,
                  xl_counter_distance: float = -0.15,
                  legend_distance: float = -0.15,
                  # Font configs 
                  title_font_size: int = 14,
-                 lable_font_size: int = 14,
+                 ruler_font_size: int = 14,
                  legend_font_size: int = 14,
-                 prot_id_font_size: int = 14,
+                 prot_font_size: int = 14,
                  # Figure elements plotting configs 
                  plot_all_proteins: bool = False,
                  plot_protein_ids = True,
-                 plot_xls_counter: bool = True,
+                 plot_counter: bool = True,
+                 plot_xl_legend: bool = True,
                  plot_domain_legend: bool = True,
                  # XL configs 
-                 min_xl_replica: int = 1,
+                 min_rep: int = 1,
+                 max_rep: int = sys.maxsize,
                  plot_interprotein_xls: bool = True,
                  plot_intraprotein_xls: bool = True,
                  plot_homotypical_xls: bool = True):
@@ -118,6 +123,7 @@ class CircosConfig:
             self.domains = domains
             self.legend = legend
             self.title = title
+            self.figsize = figsize
             self.lable_interval = lable_interval
             self.space_between_sectors = space_between_sectors
             self.domain_legend_distance = domain_legend_distance
@@ -125,25 +131,27 @@ class CircosConfig:
             self.xl_counter_distance = xl_counter_distance
             self.legend_distance = legend_distance
             self.title_font_size = title_font_size
-            self.lable_font_size = lable_font_size
+            self.ruler_font_size = ruler_font_size
             self.legend_font_size = legend_font_size
-            self.prot_id_font_size = prot_id_font_size
+            self.prot_font_size = prot_font_size
             self.plot_all_proteins = plot_all_proteins
             self.plot_protein_ids = plot_protein_ids
-            self.plot_xls_counter = plot_xls_counter
+            self.plot_counter = plot_counter
+            self.plot_xl_legend = plot_xl_legend
             self.plot_domain_legend = plot_domain_legend
-            self.min_xl_replica = min_xl_replica
+            self.min_rep = min_rep
+            self.max_rep = max_rep
             self.plot_interprotein_xls = plot_interprotein_xls
             self.plot_intraprotein_xls = plot_intraprotein_xls
             self.plot_homotypical_xls = plot_homotypical_xls
 
 
-class Circos_Plot:  
+class Circos:  
     def __init__(self, xls: 'CrossLinkDataset', config: 'CircosConfig'):
         self.config = copy.deepcopy(config)
         self.xls = copy.deepcopy(xls)
 
-        self.xls.filter_by_min_xl_replica(self.config.min_xl_replica)
+        self.xls.filter_by_replica(self.config.min_rep, self.config.max_rep)
 
         if self.config.plot_interprotein_xls is False:
             self.xls.remove_interprotein_xls()
@@ -155,7 +163,7 @@ class Circos_Plot:
 
         self.fasta = copy.deepcopy(config.fasta)
         if config.plot_all_proteins is False:
-            self.fasta.remove_entities_without_merox_xl(self.xls)
+            self.fasta.filter_by_CrossLinkDataset(self.xls)
         
         self.domains = None
         if self.config.domains is not None:
@@ -166,7 +174,7 @@ class Circos_Plot:
         
         self.sectors = {prot.prot_gene: prot.seq_length for prot in self.fasta}
         self.prot_colors = self._assign_colors()
-        self.circos = Circos(self.sectors, space=self.config.space_between_sectors)
+        self.circos = circos(self.sectors, space=self.config.space_between_sectors)
 
         # XL colors
         self.heterotypic_intraprotein_xl_color = '#21a2ed' # Blue
@@ -192,10 +200,11 @@ class Circos_Plot:
         if (self.config.domains is not None and len(self.config.domains) != 0):
             self._plot_domains()
             
-        self._plot_xl_legend()
+        if self.config.plot_xl_legend:
+            self._plot_xl_legend()
         
-        if self.config.plot_xls_counter is True:
-            self._plot_xls_counter()
+        if self.config.plot_counter:
+            self._plot_counter()
         
         if (self.config.title is not None):
             self._plot_title()
@@ -254,7 +263,7 @@ class Circos_Plot:
             track = sector.add_track((92, 100))
             track.axis(fc = self.prot_colors[sector.name])
             if self.config.plot_protein_ids:
-                sector.text(sector.name, color = '#3A3B3C', r = 110, size = self.config.prot_id_font_size) # Text lable
+                sector.text(sector.name, color = '#3A3B3C', r = 110, size = self.config.prot_font_size)
 
             if self.domains != None:
                 for domain in self.domains:
@@ -264,7 +273,7 @@ class Circos_Plot:
                     track2.rect(domain.start, domain.end, fc=domain.color)
             
             track._start += 1 # Remove zero lable of the plot
-            track.xticks_by_interval(self.config.lable_interval, label_size = self.config.lable_font_size) # Lable step
+            track.xticks_by_interval(self.config.lable_interval, label_size = self.config.ruler_font_size)
             track._start -= 1
 
     def _plot_xls(self) -> None:
@@ -272,8 +281,8 @@ class Circos_Plot:
             xl_color = self.heterotypic_intraprotein_xl_color
             plane = 2
 
-            protein_1 = self.fasta.find_protein_name_by_header_string(xl.protein_1)
-            protein_2 = self.fasta.find_protein_name_by_header_string(xl.protein_2)
+            protein_1 = self.fasta.find_gene_by_fasta_header(xl.protein_1)
+            protein_2 = self.fasta.find_gene_by_fasta_header(xl.protein_2)
             if protein_1 == None or protein_2 == None:
                 continue
 
@@ -285,15 +294,15 @@ class Circos_Plot:
             
             self.circos.link((protein_1, xl.num_site_1, xl.num_site_1), (protein_2, xl.num_site_2, xl.num_site_2), ec=xl_color, zorder=plane, lw=site_count)
         
-        self.fig = self.circos.plotfig()
+        self.fig = self.circos.plotfig(figsize = self.config.figsize)
     
-    def _plot_xls_counter(self) -> None:
+    def _plot_counter(self) -> None:
         total_xls_sites = 0
         site_counter = {}
         
         for xl, site_count in self.xls.xls_site_count.items():
-            protein_1 = self.fasta.find_protein_name_by_header_string(xl.protein_1)
-            protein_2 = self.fasta.find_protein_name_by_header_string(xl.protein_2)
+            protein_1 = self.fasta.find_gene_by_fasta_header(xl.protein_1)
+            protein_2 = self.fasta.find_gene_by_fasta_header(xl.protein_2)
             if protein_1 == None or protein_2 == None:
                 continue
             
@@ -374,12 +383,12 @@ class Circos_Plot:
         if exhist_homotypcal_xl is True and self.config.plot_homotypical_xls is True:
             legend_info.append({'label': 'Homotypic unique XLs', 'color': self.homotypic_xl_color, 'linewidth': 2})
 
-        if self.config.min_xl_replica == 1:
+        if self.config.min_rep == 1:
             legend_info.append({'label': '1-replica unique XLs', 'color': self.general_xl_color, 'linewidth': 1})
         
         if most_frequent_xl > 1:
             for i in range(2, most_frequent_xl + 1):
-                if i < self.config.min_xl_replica:
+                if i < self.config.min_rep:
                     continue
 
                 legend_info.append({'label': f'{i}-replicas unique XLs', 'color': self.general_xl_color, 'linewidth': i}) 
@@ -397,7 +406,13 @@ class Circos_Plot:
                       homotypic_xl_color = '#ed2b21', 
                       general_xl_color = '#7d8082') -> None:
 
-        self.heterotypic_intraprotein_xl_color = heterotypic_intraprotein_xl_color
-        self.heterotypic_interprotein_xl_color = heterotypic_interprotein_xl_color
-        self.homotypic_xl_color = homotypic_xl_color
-        self.general_xl_color = general_xl_color
+        def _valid_hex_color(color) -> str:
+            hex_color_pattern = r'^#([0-9A-Fa-f]{3}){1,2}$'
+            if re.match(hex_color_pattern, color):
+                return color
+            raise ValueError(f'ERROR! Invalid hex color: {color}')
+
+        self.heterotypic_intraprotein_xl_color = _valid_hex_color(heterotypic_intraprotein_xl_color)
+        self.heterotypic_interprotein_xl_color = _valid_hex_color(heterotypic_interprotein_xl_color)
+        self.homotypic_xl_color = _valid_hex_color(homotypic_xl_color)
+        self.general_xl_color = _valid_hex_color(general_xl_color)

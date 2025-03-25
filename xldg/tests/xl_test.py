@@ -42,7 +42,6 @@ class TestCrossLinkDataset:
         self.folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
         self.combined_dataset = DatasetUtil.combine_all_datasets(self.folder_content)
 
-
     def _read_file(self, file_path: str, delete: bool = False):
         content = None
         with open(file_path, "r", encoding="utf-8") as f:
@@ -174,7 +173,6 @@ class TestCrossLinkDataset:
         ref_interprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_interprotein_reference.pb"))
         ref_intraprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_intraprotein_reference.pb"))
         ref_homotypic_pb = self._read_file(os.path.join(self.chimerax_folder, "color_homotypical_reference.pb"))
-
         assert (
             interprotein_pb == ref_interprotein_pb and
             intraprotein_pb == ref_intraprotein_pb and

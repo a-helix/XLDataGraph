@@ -34,7 +34,11 @@ class TestFasta:
         fasta_format = 'Custom'
         remove_parenthesis = False
         fasta = Fasta(header, sequence, fasta_format, remove_parenthesis)
-        assert fasta.db_id == header and fasta.prot_gene == header and fasta.seq_length == len(sequence) + 2
+        assert (
+            fasta.db_id == header and 
+            fasta.prot_gene == header and 
+            fasta.seq_length == len(sequence) + 2
+        )
 
     def test_remove_parenthesis_constructor(self):
         original_header = '>sp|P02769|(ALBU_BOVIN) (Albumin) OS=(Bos taurus) OX=(9913) GN=(ALB) PE=(1) SV=(4)'
