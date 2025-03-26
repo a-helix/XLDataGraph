@@ -1,8 +1,11 @@
-from typing import List, Tuple, Dict, Set
+﻿from typing import List, Tuple, Dict, Set
 import os
 import sys
 import re
 import copy
+
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 
 class ProteinChainDataset:
@@ -307,13 +310,13 @@ class CrossLinkDataset:
         self, 
         pcd: ProteinChainDataset, 
         folder_path: str, 
-        file_name: str = '',  
+        file_name: str,  
         diameter: float = 0.2, 
         dashes: int = 1,
         color_heterotypical_intraprotein_xl: str = "#21a2ed", 
         color_heterotypical_interprotein_xl: str = "#00008B", 
         color_homotypical_xl: str = "#ed2b21"
-    ) -> None:
+    ) -> None: #TODO" ADD fit model
         """
         Exports cross-links for visualization in ChimeraX.
 
@@ -382,6 +385,134 @@ class CrossLinkDataset:
             _write_to_pb_file("\n".join(buffer_homotypical_xl), f"{file_name}_homotypical_xl_{xl_frequency}_rep.pb")
 
         print(f"DB files saved to {folder_path}")
+   
+    def _validate_gephi_format(self, folder_name: str, file_name: str) -> str:
+        file_extension = os.path.splitext(file_name)[1]
+        lower_extension = file_extension.lower()
+        if lower_extension != ".gexf":
+            raise ValueError(f'ERROR! Wrong file extension in {file_name}. Only ".gexf" format is supported')
+        os.makedirs(folder_name, exist_ok=True)
+        return os.path.join(folder_name, file_name)
+
+    def _create_gexf(self, file_path: str, node_buffer, edge_buffer) -> None:
+        gexf = ET.Element('gexf', version='1.3', xmlns='http://www.gexf.net/1.3')
+        graph = ET.SubElement(gexf, 'graph', mode='static', defaultedgetype='undirected')
+    
+        nodes = ET.SubElement(graph, 'nodes')
+        for node_id, label in node_buffer.items():
+            ET.SubElement(nodes, 'node', {'id': str(node_id), 'label': str(label)})
+    
+        edges = ET.SubElement(graph, 'edges')
+        for edge_id, ((source, target), weight) in enumerate(edge_buffer.items()):
+            ET.SubElement(edges, 'edge', {
+                'id': str(edge_id),
+                'source': str(source),
+                'target': str(target),
+                'weight': str(weight)
+            })
+    
+        rough_string = ET.tostring(gexf, encoding='utf-8')
+        reparsed = minidom.parseString(rough_string)
+        xml_content = reparsed.toprettyxml(indent="  ")
+        xml_content = xml_content.replace('<?xml version="1.0" ?>',
+                            '<?xml version="1.0" encoding="UTF-8"?>')
+
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(xml_content)
+
+    def export_ppis_for_gephi(
+        self, 
+        pcd: ProteinChainDataset, 
+        folder_path: str, 
+        file_name: str,
+        blank_counter: bool = False
+    ) -> None:
+        save_path = self._validate_gephi_format(folder_path, file_name)
+        node_buffer = dict()
+        edge_buffer = dict()
+    
+        for key, value in pcd:
+            for i in value:
+                node_buffer[i] = key
+    
+        for xl in self.xls_site_count:
+            for chain1, id1 in node_buffer.items():
+                for chain2, id2 in node_buffer.items():
+                    if chain1 == chain2:
+                        continue
+                    xl = self._validate_terminus_sites(xl)
+                    if xl.protein_1 == id1 and xl.protein_2 == id2:
+                        pair = tuple(sorted((chain1, chain2)))
+                        edge_buffer[pair] = edge_buffer.get(pair, 0) + 1
+    
+        if blank_counter:
+            edge_buffer = {k: 1 for k in edge_buffer}
+    
+        self._create_gexf(save_path, node_buffer, edge_buffer)
+
+    def export_aais_for_gephi(
+        self, 
+        pcd: ProteinChainDataset, 
+        folder_path: str, 
+        file_name: str,
+        blank_counter: bool = False  
+    ) -> None:
+
+        save_path = self._validate_gephi_format(folder_path, file_name)
+        node_buffer = dict()
+        edge_buffer = dict()
+        size_buffer = dict()
+
+        # Calculate min/max sites for each protein
+        for key, _ in pcd:
+            min_site = sys.maxsize
+            max_site = 0
+
+            for xl in self.xls_site_count:
+                validated_xl = self._validate_terminus_sites(xl)
+                if validated_xl.protein_1 == key:
+                    min_site = min(min_site, validated_xl.num_site_1)
+                    max_site = max(max_site, validated_xl.num_site_1)
+                if validated_xl.protein_2 == key:
+                    min_site = min(min_site, validated_xl.num_site_2)
+                    max_site = max(max_site, validated_xl.num_site_2)
+
+            size_buffer[key] = (min_site, max_site)
+
+        # Generate nodes and consecutive edges
+        for key, value in pcd:
+            for chain in value:
+                first = size_buffer[key][0]
+                last = size_buffer[key][1] + 1
+                for i in range(first, last):
+                    node_id = f'{chain}{i}_{key}'
+                    node_label = f'{chain}{i}'
+                    node_buffer[node_id] = node_label
+
+                # Add edges between consecutive residues (i → i+1)
+                for i in range(first, last - 1):  # ✅ Stop at last-1
+                    node_id = f'{chain}{i}_{key}'
+                    next_node = f'{chain}{i+1}_{key}'
+                    edge_buffer[(node_id, next_node)] = 1
+
+        # Map chains to their protein IDs
+        chain_buffer = {chain: key for key, chains in pcd for chain in chains}
+
+        # Process crosslinks between chains
+        for xl in self.xls_site_count:
+            validated_xl = self._validate_terminus_sites(xl)
+            for chain1, id1 in chain_buffer.items():
+                for chain2, id2 in chain_buffer.items():
+                    if chain1 == chain2:
+                        continue
+
+                    if (validated_xl.protein_1 == id1 and validated_xl.protein_2 == id2):
+                        first_id = f'{chain1}{validated_xl.num_site_1}_{id1}'
+                        second_id = f'{chain2}{validated_xl.num_site_2}_{id2}'
+                        pair = tuple(sorted((first_id, second_id)))
+                        edge_buffer[pair] = edge_buffer.get(pair, 0) + 1
+
+        self._create_gexf(save_path, node_buffer, edge_buffer)
 
     @classmethod
     def unique_elements(cls, dataset1: 'CrossLinkDataset', dataset2: 'CrossLinkDataset') -> Tuple['CrossLinkDataset', 'CrossLinkDataset']:

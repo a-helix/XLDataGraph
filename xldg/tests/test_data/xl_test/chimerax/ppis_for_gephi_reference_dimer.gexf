@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gexf xmlns="http://www.gexf.net/1.3" version="1.3">
+  <graph mode="static" defaultedgetype="undirected">
+    <nodes>
+      <node id="A" label="&gt;GSTIMP1-cleav"/>
+      <node id="B" label="&gt;GSTIMP1-cleav"/>
+      <node id="C" label="&gt;Heavy_IMP1"/>
+      <node id="D" label="&gt;Heavy_IMP1"/>
+    </nodes>
+    <edges>
+      <edge id="0" source="A" target="C" weight="125"/>
+      <edge id="1" source="A" target="D" weight="125"/>
+      <edge id="2" source="B" target="C" weight="125"/>
+      <edge id="3" source="B" target="D" weight="125"/>
+      <edge id="4" source="A" target="B" weight="148"/>
+      <edge id="5" source="C" target="D" weight="212"/>
+    </edges>
+  </graph>
+</gexf>

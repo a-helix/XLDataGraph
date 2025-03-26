@@ -10,4 +10,5 @@ __pycache__/
 *.sln
 *.pyproj
 xldg/src/xldg/venn2.py
+xldg/src/xldg/api.py
 

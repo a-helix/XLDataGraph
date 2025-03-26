@@ -179,6 +179,74 @@ class TestCrossLinkDataset:
             homotypic_pb == ref_homotypic_pb
         )
 
+    def test_positive_export_ppis_for_gephi(self):
+        pcd_monomer = ProteinChainDataset(os.path.join(self.CWD, "monomer.pcd"))
+        pcd_dimer = ProteinChainDataset(os.path.join(self.CWD, "dimer.pcd"))
+        
+        save_monomer = "ppis_for_gephi_test_monomer.gexf"
+        save_dimer = "ppis_for_gephi_test_dimer.gexf"
+
+        self.combined_dataset.export_ppis_for_gephi(pcd_monomer, self.chimerax_folder, save_monomer)
+        self.combined_dataset.export_ppis_for_gephi(pcd_dimer, self.chimerax_folder, save_dimer)
+
+        monomer_sample_path = os.path.join(self.chimerax_folder, save_monomer)
+        monomer_reference_path = os.path.join(self.chimerax_folder, "ppis_for_gephi_reference_monomer.gexf")
+
+        dimer_sample_path = os.path.join(self.chimerax_folder, save_dimer)
+        dimer_reference_path = os.path.join(self.chimerax_folder, "ppis_for_gephi_reference_dimer.gexf")
+
+        monomer_sample = self._read_file(monomer_sample_path, True)
+        monomer_reference = self._read_file(monomer_reference_path)
+
+        dimer_sample = self._read_file(dimer_sample_path, True)
+        dimer_reference = self._read_file(dimer_reference_path)
+
+        assert (
+           dimer_sample == dimer_reference and
+           monomer_sample == monomer_reference
+        )
+
+    def test_exception_export_ppis_for_gephi(self):
+        pcd = ProteinChainDataset(os.path.join(self.CWD, "dimer.pcd"))
+        save_name = "ppis_for_gephi_test.PDF"
+        
+        with pytest.raises(ValueError, match = f'ERROR! Wrong file extension in {save_name}. Only ".gexf" format is supported'):
+            self.combined_dataset.export_ppis_for_gephi(pcd, self.chimerax_folder, save_name)
+
+    def test_positive_export_aais_for_gephi(self):
+        pcd_monomer = ProteinChainDataset(os.path.join(self.CWD, "monomer.pcd"))
+        pcd_dimer = ProteinChainDataset(os.path.join(self.CWD, "dimer.pcd"))
+        
+        save_monomer = "aais_for_gephi_test_monomer.gexf"
+        save_dimer = "aais_for_gephi_test_dimer.gexf"
+
+        self.combined_dataset.export_aais_for_gephi(pcd_monomer, self.chimerax_folder, save_monomer)
+        self.combined_dataset.export_aais_for_gephi(pcd_dimer, self.chimerax_folder, save_dimer)
+
+        monomer_sample_path = os.path.join(self.chimerax_folder, save_monomer)
+        monomer_reference_path = os.path.join(self.chimerax_folder, "aais_for_gephi_reference_monomer.gexf")
+
+        dimer_sample_path = os.path.join(self.chimerax_folder, save_dimer)
+        dimer_reference_path = os.path.join(self.chimerax_folder, "aais_for_gephi_reference_dimer.gexf")
+
+        monomer_sample = self._read_file(monomer_sample_path, True)
+        monomer_reference = self._read_file(monomer_reference_path)
+
+        dimer_sample = self._read_file(dimer_sample_path, True)
+        dimer_reference = self._read_file(dimer_reference_path)
+
+        assert (
+           dimer_sample == dimer_reference and
+           monomer_sample == monomer_reference
+        )
+
+    def test_exception_export_aais_for_gephi(self):
+        pcd = ProteinChainDataset(os.path.join(self.CWD, "dimer.pcd"))
+        save_name = "ppis_for_gephi_test.PDF"
+        
+        with pytest.raises(ValueError, match = f'ERROR! Wrong file extension in {save_name}. Only ".gexf" format is supported'):
+            self.combined_dataset.export_aais_for_gephi(pcd, self.chimerax_folder, save_name)
+
     def test_positive_unique_elements(self):
         first_dataset = self.folder_content[0]
         last_dataset = self.folder_content[-1]
@@ -260,3 +328,17 @@ class TestCrossLinkDataset:
                 raise ValueError("Combined elements are not the same")
 
         assert len(combined_dataset) == len(first_dataset)
+    
+
+
+if __name__ == "__main__":
+    CWD = os.path.join(os.getcwd(), "tests", "test_data", "xl_test")
+    TDF = os.path.join(os.getcwd(), "tests", "test_data", "zhrm")
+    chimerax_folder = os.path.join(CWD, 'chimerax')
+    pcd = ProteinChainDataset(os.path.join(CWD, "monomer.pcd"))
+
+    zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
+    folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
+    combined_dataset = DatasetUtil.combine_all_datasets(folder_content)
+    combined_dataset.export_aais_for_gephi(pcd, chimerax_folder, "monomer.gexf")
+
