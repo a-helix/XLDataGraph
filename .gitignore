@@ -7,8 +7,6 @@ TestResults/
 build/
 xldg.egg-info/
 __pycache__/
-*.sln
-*.pyproj
 xldg/src/xldg/venn2.py
 xldg/src/xldg/api.py
 
