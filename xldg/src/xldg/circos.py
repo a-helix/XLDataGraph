@@ -1,5 +1,4 @@
 ﻿import colorsys
-from ctypes import ArgumentError
 from typing import List, Iterator, Tuple
 import os
 import sys

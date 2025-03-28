@@ -14,6 +14,7 @@ setup(
     install_requires=[
         'requests>=2.32.3',
         'pyCirclize>=1.6.0',
+        'matplotlib_venn>=1.1.2',
     ],
     classifiers=[
         'Programming Language :: Python :: 3',

@@ -18,7 +18,7 @@ class ProteinChainDataset:
         try:
             with open(path_to_pcd_file, 'r') as file:
                 for line in file:
-                    splited_line = line.replace('\n', '').replace(' ', '').split(',')
+                    splited_line = line.replace('\n', '').split(',')
 
                     if len(splited_line) < 2:
                         raise ValueError(
@@ -257,7 +257,7 @@ class CrossLinkDataset:
             if element not in element_counts:
                 element_counts[element] = 1 
             else:
-                element_counts[element] += 1 
+                element_counts[element] += 1
 
         return element_counts
 
@@ -479,18 +479,16 @@ class CrossLinkDataset:
 
             size_buffer[key] = (min_site, max_site)
 
-        # Generate nodes and consecutive edges
         for key, value in pcd:
             for chain in value:
                 first = size_buffer[key][0]
                 last = size_buffer[key][1] + 1
                 for i in range(first, last):
                     node_id = f'{chain}{i}_{key}'
-                    node_label = f'{chain}{i}'
+                    node_label = f'{chain}_{i}'
                     node_buffer[node_id] = node_label
 
-                # Add edges between consecutive residues (i → i+1)
-                for i in range(first, last - 1):  # ✅ Stop at last-1
+                for i in range(first, last - 1):
                     node_id = f'{chain}{i}_{key}'
                     next_node = f'{chain}{i+1}_{key}'
                     edge_buffer[(node_id, next_node)] = 1

@@ -328,17 +328,3 @@ class TestCrossLinkDataset:
                 raise ValueError("Combined elements are not the same")
 
         assert len(combined_dataset) == len(first_dataset)
-    
-
-
-if __name__ == "__main__":
-    CWD = os.path.join(os.getcwd(), "tests", "test_data", "xl_test")
-    TDF = os.path.join(os.getcwd(), "tests", "test_data", "zhrm")
-    chimerax_folder = os.path.join(CWD, 'chimerax')
-    pcd = ProteinChainDataset(os.path.join(CWD, "monomer.pcd"))
-
-    zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
-    folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
-    combined_dataset = DatasetUtil.combine_all_datasets(folder_content)
-    combined_dataset.export_aais_for_gephi(pcd, chimerax_folder, "monomer.gexf")
-
