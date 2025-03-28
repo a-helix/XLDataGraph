@@ -501,7 +501,7 @@ class ProteinStructure:
         return iter(self.atoms)
 
 class Export:
-    def export_for_chimerax(
+    def to_chimerax_pseudobonds(
         self, 
         pcd: ProteinChainDataset, 
         folder_path: str, 
