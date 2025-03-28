@@ -1,16 +1,16 @@
 import pytest
 import os
 import random
-from xldg.utils import PathUtil, DatasetUtil
+from xldg.utils import Path, DatasetUtil
 
 
-class TestPathUtil:
+class TestPath:
     @pytest.fixture(autouse=True)
     def setup(self):
         # Current Working Directory
         self.CWD = os.path.join(os.getcwd(), "tests", "test_data", "utils_test")
-        self.none_files = PathUtil.list_specified_type_files_from_folder(self.CWD, '.none')
-        self.fasta_files = PathUtil.list_specified_type_files_from_folder(self.CWD, '.fasta')
+        self.none_files = Path.list_specified_type_files_from_folder(self.CWD, '.none')
+        self.fasta_files = Path.list_specified_type_files_from_folder(self.CWD, '.fasta')
 
     def test_positive_list_specified_type_files_from_folder(self):
         assert len(self.fasta_files) == 3
@@ -21,25 +21,25 @@ class TestPathUtil:
     def test_exception_in_list_specified_type_files_from_folder(self):
         folder = "non_existent_folder"
         with pytest.raises(FileNotFoundError):
-            PathUtil.list_specified_type_files_from_folder(folder, ".zhrm")
+            Path.list_specified_type_files_from_folder(folder, ".zhrm")
     
 
     def test_positive_sort_filenames_by_first_integer(self):
         random.shuffle(self.fasta_files)
-        sorted_files = PathUtil.sort_filenames_by_first_integer(self.fasta_files)
+        sorted_files = Path.sort_filenames_by_first_integer(self.fasta_files)
         reference = [os.path.join(self.CWD, 'BSA_1.fasta'),
                      os.path.join(self.CWD, '2_BSA.fasta'),
                      os.path.join(self.CWD, 'BSA_3.fasta')]
         assert sorted_files == reference
 
     def test_negative_sort_filenames_by_first_integer(self):
-        sorted_files = PathUtil.sort_filenames_by_first_integer(self.none_files)
+        sorted_files = Path.sort_filenames_by_first_integer(self.none_files)
         reference = []
         assert sorted_files == reference
 
     def test_ignore_argument_in_sort_filenames_by_first_integer(self):
-        files = PathUtil.list_specified_type_files_from_folder(self.CWD, '.txt')
-        sorted_files = PathUtil.sort_filenames_by_first_integer(files, ignore = 'abcd1234_')
+        files = Path.list_specified_type_files_from_folder(self.CWD, '.txt')
+        sorted_files = Path.sort_filenames_by_first_integer(files, ignore = 'abcd1234_')
         reference = [os.path.join(self.CWD, 'abcd1234_file1.txt'),
                      os.path.join(self.CWD, 'abcd1234_file2.txt'),
                      os.path.join(self.CWD, 'abcd1234_file3.txt')]
@@ -53,20 +53,20 @@ class TestDatasetUtil:
         # Test Data Folder
         self.TDF = os.path.join(os.getcwd(), "tests", "test_data", "zhrm") 
 
-        zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(self.TDF, '.zhrm')
-        self.folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
-        self.combined_replicas = DatasetUtil.combine_replicas_in_xl_datasets(self.folder_content, 3)
+        zhrm_folder_path = Path.list_specified_type_files_from_folder(self.TDF, '.zhrm')
+        self.folder_content = DatasetUtil.read_all_merox_files(zhrm_folder_path, 'DSBU')
+        self.combined_replicas = DatasetUtil.combine_replicas(self.folder_content, 3)
 
-    def test_read_merox_zhrm_files_from_path_list(self):
+    def test_read_all_merox_files(self):
         assert len(self.folder_content) == 3
 
-    def test_combine_replicas_in_xl_datasets(self):
+    def test_combine_replicas(self):
         
         assert len(self.combined_replicas) == 1
 
-    def test_exception_combine_replicas_in_xl_datasets(self):
+    def test_exception_combine_replicas(self):
         with pytest.raises(Exception, match = "ERROR! dataset size 3 is not mutiple to n=4"):
-            combined_replicas = DatasetUtil.combine_replicas_in_xl_datasets(self.folder_content, 4)
+            combined_replicas = DatasetUtil.combine_replicas(self.folder_content, 4)
 
     def test_xls_preservation_after_replicas_in_CrossLinkDataset(self):
         sum_of_xls = sum([len(data) for data in self.combined_replicas])

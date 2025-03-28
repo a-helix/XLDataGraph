@@ -1,7 +1,7 @@
 import pytest
 import os
 import copy
-from xldg.utils import PathUtil, DatasetUtil
+from xldg.utils import Path, DatasetUtil
 from xldg.xl import ProteinChainDataset, CrossLinkDataset
 
 
@@ -38,8 +38,8 @@ class TestCrossLinkDataset:
         TDF = os.path.join(os.getcwd(), "tests", "test_data", "zhrm")
         self.chimerax_folder = os.path.join(self.CWD, 'chimerax')
 
-        zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
-        self.folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
+        zhrm_folder_path = Path.list_specified_type_files_from_folder(TDF, '.zhrm')
+        self.folder_content = DatasetUtil.read_all_merox_files(zhrm_folder_path, 'DSBU')
         self.combined_dataset = DatasetUtil.combine_all_datasets(self.folder_content)
 
     def _read_file(self, file_path: str, delete: bool = False):

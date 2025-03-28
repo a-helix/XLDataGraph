@@ -2,7 +2,7 @@ import pytest
 import os
 import copy
 from xldg.fasta import FastaDataset
-from xldg.utils import PathUtil, DatasetUtil
+from xldg.utils import Path, DatasetUtil
 from xldg.circos import Circos, CircosConfig, DomainDataset, Domain
 
 
@@ -42,7 +42,7 @@ class TestDomainDataset:
         # Domain Files Directory
         self.DFD = os.path.join(os.getcwd(), "tests", "test_data", "dmn")
 
-        domain_path = PathUtil.list_specified_type_files_from_folder(self.DFD, '.dmn')
+        domain_path = Path.list_specified_type_files_from_folder(self.DFD, '.dmn')
         self.domains = DomainDataset(domain_path)
 
     def test_filter_by_fasta(self):
@@ -64,12 +64,12 @@ class TestCircos:
 
         # Domain Files Directory
         DFD = os.path.join(os.getcwd(), "tests", "test_data", "dmn")
-        domain_path = PathUtil.list_specified_type_files_from_folder(DFD, '.dmn')
+        domain_path = Path.list_specified_type_files_from_folder(DFD, '.dmn')
         self.domains = DomainDataset(domain_path)
 
         merox_data = os.path.join(os.getcwd(), "tests", "test_data", "zhrm") 
-        zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(merox_data, '.zhrm')
-        folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
+        zhrm_folder_path = Path.list_specified_type_files_from_folder(merox_data, '.zhrm')
+        folder_content = DatasetUtil.read_all_merox_files(zhrm_folder_path, 'DSBU')
         self.combined_data = DatasetUtil.combine_all_datasets(folder_content)
 
         self.config = CircosConfig(self.fasta_dataset)

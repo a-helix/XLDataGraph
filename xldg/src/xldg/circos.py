@@ -1,5 +1,6 @@
 ﻿import colorsys
-from typing import List, Iterator, Tuple
+from dataclasses import dataclass
+from typing import List, Iterator, Tuple, Optional
 import os
 import sys
 import copy
@@ -83,66 +84,44 @@ class DomainDataset:
 
         self.domains = filtered_domains
 
-
+@dataclass
 class CircosConfig:
-        def __init__(self, 
-                 # File input 
-                 fasta: FastaDataset, 
-                 domains: DomainDataset = None,
-                 # Text input 
-                 legend: str = None, 
-                 title: str = None, 
-                 # Figure configs 
-                 figsize: Tuple[float, float] = [9, 9],
-                 lable_interval: int = 20, 
-                 space_between_sectors: int = 5,
-                 domain_legend_distance: float = 1.25,
-                 xl_legend_distance: float = 1.3,
-                 xl_counter_distance: float = -0.15,
-                 legend_distance: float = -0.15,
-                 # Font configs 
-                 title_font_size: int = 14,
-                 ruler_font_size: int = 14,
-                 legend_font_size: int = 14,
-                 prot_font_size: int = 14,
-                 # Figure elements plotting configs 
-                 plot_all_proteins: bool = False,
-                 plot_protein_ids = True,
-                 plot_counter: bool = True,
-                 plot_xl_legend: bool = True,
-                 plot_domain_legend: bool = True,
-                 # XL configs 
-                 min_rep: int = 1,
-                 max_rep: int = sys.maxsize,
-                 plot_interprotein_xls: bool = True,
-                 plot_intraprotein_xls: bool = True,
-                 plot_homotypical_xls: bool = True):
-
-            self.fasta = fasta
-            self.domains = domains
-            self.legend = legend
-            self.title = title
-            self.figsize = figsize
-            self.lable_interval = lable_interval
-            self.space_between_sectors = space_between_sectors
-            self.domain_legend_distance = domain_legend_distance
-            self.xl_legend_distance = xl_legend_distance  
-            self.xl_counter_distance = xl_counter_distance
-            self.legend_distance = legend_distance
-            self.title_font_size = title_font_size
-            self.ruler_font_size = ruler_font_size
-            self.legend_font_size = legend_font_size
-            self.prot_font_size = prot_font_size
-            self.plot_all_proteins = plot_all_proteins
-            self.plot_protein_ids = plot_protein_ids
-            self.plot_counter = plot_counter
-            self.plot_xl_legend = plot_xl_legend
-            self.plot_domain_legend = plot_domain_legend
-            self.min_rep = min_rep
-            self.max_rep = max_rep
-            self.plot_interprotein_xls = plot_interprotein_xls
-            self.plot_intraprotein_xls = plot_intraprotein_xls
-            self.plot_homotypical_xls = plot_homotypical_xls
+    # File input
+    fasta: FastaDataset
+    domains: Optional[DomainDataset] = None
+    
+    # Text input
+    legend: Optional[str] = None
+    title: Optional[str] = None
+    
+    # Figure configs
+    figsize: Tuple[float, float] = (9, 9)
+    label_interval: int = 20
+    space_between_sectors: int = 5
+    domain_legend_distance: float = 1.25
+    xl_legend_distance: float = 1.3
+    xl_counter_distance: float = -0.15
+    legend_distance: float = -0.15
+    
+    # Font configs
+    title_font_size: int = 14
+    ruler_font_size: int = 14
+    legend_font_size: int = 14
+    prot_font_size: int = 14
+    
+    # Figure elements plotting configs
+    plot_all_proteins: bool = False
+    plot_protein_ids: bool = True
+    plot_counter: bool = True
+    plot_xl_legend: bool = True
+    plot_domain_legend: bool = True
+    
+    # XL configs
+    min_rep: int = 1
+    max_rep: int = sys.maxsize
+    plot_interprotein_xls: bool = True
+    plot_intraprotein_xls: bool = True
+    plot_homotypical_xls: bool = True
 
 
 class Circos:  

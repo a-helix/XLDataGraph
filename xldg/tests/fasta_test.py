@@ -2,7 +2,7 @@ import pytest
 import os
 import sys
 
-from xldg.utils import PathUtil, DatasetUtil
+from xldg.utils import Path, DatasetUtil
 from xldg.fasta import Fasta, FastaDataset
 
 
@@ -74,14 +74,14 @@ class TestFastaDataset:
         # Test Data Folder
         TDF = os.path.join(os.getcwd(), "tests", "test_data", "zhrm")
 
-        self.fasta_files = PathUtil.list_specified_type_files_from_folder(self.CWD, ".fasta")
+        self.fasta_files = Path.list_specified_type_files_from_folder(self.CWD, ".fasta")
         self.fasta_dataset = FastaDataset(self.fasta_files, "Custom", False)
 
-        zhrm_folder_path = PathUtil.list_specified_type_files_from_folder(TDF, '.zhrm')
-        folder_content = DatasetUtil.read_merox_zhrm_files_from_path_list(zhrm_folder_path, 'DSBU')
+        zhrm_folder_path = Path.list_specified_type_files_from_folder(TDF, '.zhrm')
+        folder_content = DatasetUtil.read_all_merox_files(zhrm_folder_path, 'DSBU')
         self.combined_replicas = DatasetUtil.combine_all_datasets(folder_content)
 
-        self.fas_files = PathUtil.list_specified_type_files_from_folder(self.CWD, ".fas")
+        self.fas_files = Path.list_specified_type_files_from_folder(self.CWD, ".fas")
         self.fas_dataset = FastaDataset(self.fas_files, "Uniprot")
 
     def test_positive_constructor(self):
