@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>a9d1593d-9273-4f28-aa52-952659dd5c68</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>tests\xl_test.py</StartupFile>
+    <StartupFile>tests\data_test.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -27,33 +27,32 @@
   <ItemGroup>
     <Compile Include="examples\gephi_export.py" />
     <Compile Include="src\xldg\api.py" />
-    <Compile Include="src\xldg\fasta.py" />
-    <Compile Include="src\xldg\circos.py" />
-    <Compile Include="src\xldg\upset.py" />
-    <Compile Include="src\xldg\utils.py" />
-    <Compile Include="src\xldg\venn.py" />
-    <Compile Include="src\xldg\xl.py" />
+    <Compile Include="src\xldg\graphics.py" />
+    <Compile Include="src\xldg\data.py" />
+    <Compile Include="src\xldg\core.py" />
     <Compile Include="src\xldg\__init__.py" />
-    <Compile Include="tests\api_test.py" />
-    <Compile Include="tests\circos_test.py" />
-    <Compile Include="tests\fasta_test.py" />
-    <Compile Include="tests\utils_test.py" />
-    <Compile Include="tests\xl_test.py" />
+    <Compile Include="tests\data_test.py" />
+    <Compile Include="tests\graphics_test.py" />
+    <Compile Include="tests\core_test.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="examples\" />
     <Folder Include="src\" />
     <Folder Include="src\xldg\" />
     <Folder Include="tests\" />
+    <Folder Include="tests\files\data\" />
+    <Folder Include="tests\files\data\path_test\" />
+    <Folder Include="tests\files\core\" />
+    <Folder Include="tests\files\data\merox\" />
     <Folder Include="tests\test_data\" />
     <Folder Include="tests\test_data\circos_test\" />
-    <Folder Include="tests\test_data\fasta\" />
+    <Folder Include="tests\files\data\fasta\" />
     <Folder Include="tests\test_data\dmn\" />
     <Folder Include="tests\test_data\utils_test\" />
     <Folder Include="tests\test_data\utils_test\__pycache__\" />
-    <Folder Include="tests\test_data\xl_test\" />
-    <Folder Include="tests\test_data\xl_test\chimerax\" />
-    <Folder Include="tests\test_data\zhrm\" />
+    <Folder Include="tests\files\data\crosslink_test\" />
+    <Folder Include="tests\files\data\crosslink_test\chimerax\" />
+    <Folder Include="tests\files\" />
   </ItemGroup>
   <ItemGroup>
     <Interpreter Include="venv\">
@@ -67,33 +66,32 @@
     </Interpreter>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="tests\test_data\fasta\fasta_1.fasta" />
-    <Content Include="tests\test_data\fasta\fasta_2.fasta" />
-    <Content Include="tests\test_data\fasta\fasta_combined.fasta" />
-    <Content Include="tests\test_data\utils_test\2_BSA.fasta" />
-    <Content Include="tests\test_data\utils_test\abcd1234_file1.txt" />
-    <Content Include="tests\test_data\utils_test\abcd1234_file2.txt" />
-    <Content Include="tests\test_data\utils_test\abcd1234_file3.txt" />
-    <Content Include="tests\test_data\utils_test\BSA_1.fasta" />
-    <Content Include="tests\test_data\utils_test\BSA_3.fasta" />
+    <Content Include="tests\files\data\path_test\abcd1234_file3.txt" />
+    <Content Include="tests\files\data\path_test\abcd1234_file2.txt" />
+    <Content Include="tests\files\data\path_test\abcd1234_file1.txt" />
+    <Content Include="tests\files\data\path_test\2_BSA.fasta" />
+    <Content Include="tests\files\data\path_test\BSA_3.fasta" />
+    <Content Include="tests\files\data\path_test\BSA_1.fasta" />
+    <Content Include="tests\files\data\fasta\fasta_1.fasta" />
+    <Content Include="tests\files\data\fasta\fasta_2.fasta" />
+    <Content Include="tests\files\data\fasta\fasta_combined.fasta" />
     <Content Include="tests\test_data\utils_test\__pycache__\utils_test.cpython-311-pytest-8.3.5.pyc" />
     <Content Include="tests\test_data\utils_test\__pycache__\utils_test.cpython-312-pytest-8.3.5.pyc" />
     <Content Include="tests\test_data\utils_test\__pycache__\utils_test.cpython-312.pyc" />
     <Content Include="tests\test_data\utils_test\__pycache__\__init__.cpython-312.pyc" />
-    <Content Include="tests\test_data\xl_test\chimerax\color_heterotypical_interprotein_reference.pb" />
-    <Content Include="tests\test_data\xl_test\chimerax\color_heterotypical_intraprotein_reference.pb" />
-    <Content Include="tests\test_data\xl_test\chimerax\color_homotypical_reference.pb" />
-    <Content Include="tests\test_data\xl_test\chimerax\dimer_reference.pb" />
-    <Content Include="tests\test_data\xl_test\chimerax\monomer_reference.pb" />
-    <Content Include="tests\test_data\xl_test\chimerax\structure_reference.cif" />
-    <Content Include="tests\test_data\xl_test\counter_reference.csv" />
-    <Content Include="tests\test_data\xl_test\counter_reference.tsv" />
-    <Content Include="tests\test_data\xl_test\dimer.pcd" />
-    <Content Include="tests\test_data\xl_test\invalid_file.pcd" />
-    <Content Include="tests\test_data\xl_test\monomer.pcd" />
-    <Content Include="tests\test_data\zhrm\dataset_1.zhrm" />
-    <Content Include="tests\test_data\zhrm\dataset_2.zhrm" />
-    <Content Include="tests\test_data\zhrm\dataset_3.zhrm" />
+    <Content Include="tests\files\data\crosslink_test\chimerax\color_heterotypical_interprotein_reference.pb" />
+    <Content Include="tests\files\data\crosslink_test\chimerax\color_heterotypical_intraprotein_reference.pb" />
+    <Content Include="tests\files\data\crosslink_test\chimerax\color_homotypical_reference.pb" />
+    <Content Include="tests\files\data\crosslink_test\chimerax\dimer_reference.pb" />
+    <Content Include="tests\files\data\crosslink_test\chimerax\monomer_reference.pb" />
+    <Content Include="tests\files\data\crosslink_test\counter_reference.csv" />
+    <Content Include="tests\files\data\crosslink_test\counter_reference.tsv" />
+    <Content Include="tests\files\data\crosslink_test\dimer.pcd" />
+    <Content Include="tests\files\data\crosslink_test\invalid_file.pcd" />
+    <Content Include="tests\files\data\crosslink_test\monomer.pcd" />
+    <Content Include="tests\files\data\merox\dataset_1.zhrm" />
+    <Content Include="tests\files\data\merox\dataset_2.zhrm" />
+    <Content Include="tests\files\data\merox\dataset_3.zhrm" />
     <Content Include="tests\test_data\dmn\domains_1.dmn" />
     <Content Include="tests\test_data\dmn\domains_2.dmn" />
   </ItemGroup>

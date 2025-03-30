@@ -1,6 +1,6 @@
 ﻿import colorsys
 from dataclasses import dataclass
-from typing import List, Iterator, Tuple, Optional
+from typing import List, Tuple, Optional
 import os
 import sys
 import copy
@@ -8,81 +8,14 @@ import re
 
 from pycirclize import Circos as circos
 
+# from matplotlib_venn import venn2
+# from matplotlib_venn import venn3
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 
-from xldg.xl import CrossLinkDataset
-from xldg.fasta import FastaDataset
+from xldg.core import CrossLinkDataset, FastaDataset, DomainDataset
 
-
-class Domain:
-    def __init__(self, input: str):        
-        self.splited_data = input.split(',')
-        if len(self.splited_data) == 5:
-            self.gene = self.splited_data[0].replace(' ', '')
-            self.start = int(self.splited_data[1].replace(' ', ''))
-            self.end = int(self.splited_data[2].replace(' ', ''))
-            self.color = self.splited_data[3].replace(' ', '')
-            self.name = self.splited_data[4].replace('\n', '')
-            self.base_color = False
-        elif len(self.splited_data) == 2:
-            self.gene = self.splited_data[0].replace(' ', '')
-            self.color = self.splited_data[1].replace(' ', '').replace('\n', '')
-            self.base_color = True
-        else:
-            raise ValueError(f'Unknown domain format: {input}')
-
-
-class DomainDataset:
-    def __init__(self, domain_files_paths_list: List[str]):
-        self.domains = self._extract_all_domain_content_from_folder(domain_files_paths_list)
-        self._index = 0  # Initialize an index for iteration
-        self._size = len(self.domains)
-
-    def _extract_all_domain_content_from_folder(self, domain_files_paths_list: List[str]) -> List['Domain']:
-        domains = []
-        
-        for file_path in domain_files_paths_list:
-            # Read content of all files
-            try:
-                with open(file_path, 'r') as file:
-                    for line in file:
-                        # Ignore comments and empty lines
-                        if line[0] == '#' or not line.strip():
-                            continue
-                        domains.append(Domain(line))
-            except FileNotFoundError:
-                print(f'Domain_Dataset error: File at {file_path} was not found.')
-            except Exception as e:
-                print(f'Domain_Dataset error: {e}')
-
-        return domains
-
-    def __len__(self):
-        return len(self.domains)
-
-    def __iter__(self) -> Iterator['Domain']:
-        self._index = 0  # Reset index for new iteration
-        return self
-    
-    def __next__(self) -> 'Domain':
-        if self._index < self._size:
-            domain = self.domains[self._index]
-            self._index += 1
-            return domain
-        else:
-            raise StopIteration
-
-    def filter_by_fasta(self, FastaDataset: 'FastaDataset') -> None:
-        filtered_domains = []
-        for domain in self.domains:
-            for fasta in FastaDataset:
-                if domain.gene == fasta.prot_gene:
-                    filtered_domains.append(domain)
-                    break
-
-        self.domains = filtered_domains
 
 @dataclass
 class CircosConfig:
@@ -132,16 +65,16 @@ class Circos:
         self.xls.filter_by_replica(self.config.min_rep, self.config.max_rep)
 
         if self.config.plot_interprotein_xls is False:
-            self.xls.remove_interprotein_xls()
+            self.xls.remove_interprotein_crosslinks()
         if self.config.plot_intraprotein_xls is False:
-            self.xls.remove_intraprotein_xls()
+            self.xls.remove_intraprotein_crosslinks()
         if self.config.plot_homotypical_xls is False:
-            self.xls.remove_homotypic_xls()
+            self.xls.remove_homotypic_crosslinks()
 
 
         self.fasta = copy.deepcopy(config.fasta)
         if config.plot_all_proteins is False:
-            self.fasta.filter_by_CrossLinkDataset(self.xls)
+            self.fasta.filter_by_crosslinks(self.xls)
         
         self.domains = None
         if self.config.domains is not None:
@@ -162,7 +95,7 @@ class Circos:
      
     def save(self, path: str) -> None:
         if len(self.xls) == 0:
-            print(f'WARNING: No crosslinks detected! Aborted save to {path}')
+            print(f'WARNING: No CrossLinkEntitys detected! Aborted save to {path}')
             return
 
         folder_path = os.path.dirname(path)
@@ -394,3 +327,51 @@ class Circos:
         self.heterotypic_interprotein_xl_color = _valid_hex_color(heterotypic_interprotein_xl_color)
         self.homotypic_xl_color = _valid_hex_color(homotypic_xl_color)
         self.general_xl_color = _valid_hex_color(general_xl_color)
+
+
+# # @dataclass
+# # class VennConfig:
+# #     labels: List[str]
+# #     domain_colors: List[str]
+# #     overlap_colors: List[str]
+# #     legend: Optional[str] = None
+# #     title: Optional[str] = None
+# #     title_font: int = 16
+# #     legend_font: int = 16
+# #     plot_legend: bool = True
+# #     dpi: int = 600
+# #     figsize: Tuple[float, float] = (9, 9)
+
+# # # xls: 'CrossLinkDataset'
+
+# # # TODO: test and improve
+# # def build_ven2_diagram_of_xl_sites(save_path: str, xls_list1: 'CrossLinkDataset', xls_list2: 'CrossLinkDataset', config: 'Venn2_Config') -> None:
+# #     self.config = copy.deepcopy(config)
+# #     plt.figure(figsize=(10, 10), dpi=600)
+    
+# #     set1 = set([str(sublist) for sublist in xls_list1])
+# #     set2 = set([str(sublist) for sublist in xls_list2])
+# #     venn = venn2([set1, set2], (label1, label2))
+
+# #     # Customize colors
+# #     venn.get_patch_by_id('10').set_color('#9AE66E') # pastel green
+# #     venn.get_patch_by_id('01').set_color('#FAF278') # pastel yellow
+# #     venn.get_patch_by_id('11').set_color('#87D5F8') # pastel blue
+
+# #     # Label the regions with the number of elements
+# #     for subset in ('10', '01', '11'):
+# #         if venn.get_label_by_id(subset):
+# #             venn.get_label_by_id(subset).set_text(f'{venn.get_label_by_id(subset).get_text()}')
+
+# #     # Customize font size
+# #     for text in venn.set_labels:
+# #         text.set_fontsize(size)
+
+# #     for text in venn.subset_labels:
+# #         if text:  # Check if the subset label is not None
+# #             text.set_fontsize(size)
+# #     if title != None:
+# #         plt.title(title).set_fontsize(18)
+
+# #     plt.savefig(save_path)
+# #     print(f'Venn2 diagram saved to {save_path}')
