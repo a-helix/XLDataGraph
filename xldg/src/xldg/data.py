@@ -119,7 +119,7 @@ class MeroX:
                         xls.append(xl)
 
             dataset = CrossLinkDataset(xls)
-            dataset.blank_crosslink_counter()
+            dataset.blank_replica_counter()
             return dataset
 
         if isinstance(path, list):
@@ -183,14 +183,14 @@ class CrossLink:
 
         dataset = copy.deepcopy(dataset)
         if isinstance(dataset, CrossLinkDataset):
-            dataset.blank_crosslink_counter()
+            dataset.blank_replica_counter()
             return dataset
     
         if isinstance(dataset, list):
             for data in dataset:
                 if not isinstance(data, CrossLinkDataset):
                     raise TypeError(f'Expected CrossLinkDataset, got {type(data)}')
-                data.blank_crosslink_counter()
+                data.blank_replica_counter()
             return dataset
 
         raise TypeError(f'Expected CrossLinkDataset or List[CrossLinkDataset], got {type(dataset)}')

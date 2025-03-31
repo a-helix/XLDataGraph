@@ -238,7 +238,7 @@ class TestCrossLink:
         filtered_data = CrossLink.remove_homotypic(filtered_data)
         assert len(filtered_data) == 0
 
-    def test_positive_blank_crosslink_counter(self):
+    def test_positive_blank_replica_counter(self):
         len_unmodified_dataset = len(self.combined_dataset)
         filtered_data = CrossLink.filter_by_replica(self.combined_dataset, max_replica=1)
         len_filtered = len(filtered_data)

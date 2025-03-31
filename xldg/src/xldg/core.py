@@ -4,6 +4,7 @@ import os
 import sys
 import re
 import copy
+import math
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
@@ -131,6 +132,11 @@ class Atom:
     y: float
     z: float
 
+    def distance_to(self, other: 'Atom') -> float:
+        return math.sqrt((self.x - other.x) ** 2 + 
+                         (self.y - other.y) ** 2 + 
+                         (self.z - other.z) ** 2)
+
 class ProteinStructureDataset:
     def __init__(self, file_path: str, format: str):
         self.file_path = file_path
@@ -146,6 +152,47 @@ class ProteinStructureDataset:
     def _read_file(self) -> str:
         with open(self.file_path, 'r') as f:
             return f.read()
+    def _three_to_one_letter_code(self, three_letter_code):
+        aa_dict = {
+            'ALA': 'A',  # Alanine
+            'ARG': 'R',  # Arginine
+            'ASN': 'N',  # Asparagine
+            'ASP': 'D',  # Aspartic acid
+            'CYS': 'C',  # Cysteine
+            'GLN': 'Q',  # Glutamine
+            'GLU': 'E',  # Glutamic acid
+            'GLY': 'G',  # Glycine
+            'HIS': 'H',  # Histidine
+            'ILE': 'I',  # Isoleucine
+            'LEU': 'L',  # Leucine
+            'LYS': 'K',  # Lysine
+            'MET': 'M',  # Methionine
+            'PHE': 'F',  # Phenylalanine
+            'PRO': 'P',  # Proline
+            'SER': 'S',  # Serine
+            'THR': 'T',  # Threonine
+            'TRP': 'W',  # Tryptophan
+            'TYR': 'Y',  # Tyrosine
+            'VAL': 'V',  # Valine
+        
+            # Non-standard amino acids
+            'SEC': 'U',  # Selenocysteine
+            'PYL': 'O',  # Pyrrolysine
+        
+            # Special cases
+            'UNK': 'X',  # Unknown
+            'XAA': 'X',  # Unspecified/unknown
+            'ASX': 'B',  # Asparagine or Aspartic acid
+            'GLX': 'Z',  # Glutamine or Glutamic acid
+        }
+    
+        # Handle case-insensitivity
+        code = three_letter_code.upper()
+    
+        if code in aa_dict:
+            return aa_dict[code]
+        else:
+            raise ValueError(f"Unknown three-letter amino acid code: {three_letter_code}")
 
     def _parse_pdb(self, content: str):
         for line in content.split('\n'):
@@ -160,67 +207,156 @@ class ProteinStructureDataset:
                     x = float(line[30:38].strip())
                     y = float(line[38:46].strip())
                     z = float(line[46:54].strip())
+
                     self.atoms.append(Atom(
-                        number=atom_number,
-                        residue=residue_number,
-                        type=atom_type,
-                        chain=chain,
-                        x=x,
-                        y=y,
-                        z=z
+                        number = residue_number,
+                        residue = self._three_to_one_letter_code(residue_name),
+                        type = atom_type,
+                        chain = chain,
+                        x = x,
+                        y = y,
+                        z = z
                     ))
                 except (ValueError, IndexError):
-                    continue  # Skip invalid lines
+                    continue  
 
     def _parse_cif(self, content: str):
+        atom_data = {}
+        current_category = None
+        column_names = []
+        in_loop = False
+    
+        # Process file line by line
         lines = content.split('\n')
-        in_atom_site_loop = False
-        headers = []
-        id_idx = label_atom_id_idx = label_comp_id_idx = -1
-        label_asym_id_idx = label_seq_id_idx = cartn_x_idx = cartn_y_idx = cartn_z_idx = -1
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+        
+            # Skip empty lines and comments
+            if not line or line.startswith('#'):
+                i += 1
+                continue
+        
+            # Check for category
+            if line.startswith('_'):
+                # Extract category and column name
+                parts = line.split('.')
+                if len(parts) >= 2:
+                    current_category = parts[0].lstrip('_')
+                    column_name = parts[1].split()[0]
+                
+                    # If this is the atom_site category, start collecting column names
+                    if current_category == 'atom_site':
+                        column_names.append(column_name)
+                    
+                        # Look ahead to collect all column names
+                        j = i + 1
+                        while j < len(lines) and lines[j].strip().startswith('_atom_site.'):
+                            column_names.append(lines[j].strip().split('.')[1].split()[0])
+                            j += 1
+                    
+                        # Skip the lines we just processed
+                        i = j
+                        in_loop = True
+                        continue
+        
+            # If we're in the atom_site loop, process the data rows
+            elif in_loop and current_category == 'atom_site' and not line.startswith('_') and not line.startswith('#'):
+                if line.startswith('loop_'):
+                    i += 1
+                    continue
+                
+                # Split the line into fields
+                fields = line.split()
+            
+                # If we've reached the end of the loop or a new category
+                if len(fields) == 0 or fields[0].startswith('_') or fields[0].startswith('loop_'):
+                    in_loop = False
+                    i += 1
+                    continue
+                
+                # Make sure we have enough fields
+                if len(fields) >= len(column_names):
+                    # Create a dictionary for this row
+                    row_data = {column_names[j]: fields[j] for j in range(len(column_names))}
+                
+                    try:
+                        # Extract the required information
+                        atom_number = int(row_data.get('id', 0))
+                        atom_type = row_data.get('label_atom_id', '').strip()
+                        residue_name = row_data.get('label_comp_id', '').strip()
+                        chain = row_data.get('auth_asym_id', row_data.get('label_asym_id', '')).strip()
+                        residue_number = row_data.get('auth_seq_id', row_data.get('label_seq_id', '')).strip()
+                    
+                        # Handle insertion code if present
+                        pdbx_pdb_ins_code = row_data.get('pdbx_PDB_ins_code', '').strip()
+                        if pdbx_pdb_ins_code and pdbx_pdb_ins_code != '?':
+                            residue_number += pdbx_pdb_ins_code
+                    
+                        # Get coordinates
+                        x = float(row_data.get('Cartn_x', 0))
+                        y = float(row_data.get('Cartn_y', 0))
+                        z = float(row_data.get('Cartn_z', 0))
+                    
+                        # Create and add the atom
+                        self.atoms.append(Atom(
+                            number = residue_number,
+                            residue = self._three_to_one_letter_code(residue_name),
+                            type = atom_type,
+                            chain = chain,
+                            x = x,
+                            y = y,
+                            z = z
+                        ))
+                    except (ValueError, KeyError) as e:
+                        print(f"Error parsing CIF atom entry: {e}")
+            i += 1         
 
-        for line in lines:
-            line = line.strip()
-            if line.startswith('loop_'):
-                headers = []
-                in_atom_site_loop = False
-            elif line.startswith('_atom_site.'):
-                header = line.split('.', 1)[1]
-                headers.append(header)
-                # Map header fields to indices
-                if header == 'id': id_idx = len(headers)-1
-                elif header == 'label_atom_id': label_atom_id_idx = len(headers)-1
-                elif header == 'label_comp_id': label_comp_id_idx = len(headers)-1
-                elif header == 'label_asym_id': label_asym_id_idx = len(headers)-1
-                elif header == 'label_seq_id': label_seq_id_idx = len(headers)-1
-                elif header == 'Cartn_x': cartn_x_idx = len(headers)-1
-                elif header == 'Cartn_y': cartn_y_idx = len(headers)-1
-                elif header == 'Cartn_z': cartn_z_idx = len(headers)-1
-            elif headers and not line.startswith('_'):
-                in_atom_site_loop = True
-            else:
-                in_atom_site_loop = False
-
-            if in_atom_site_loop and line and not line.startswith(('#', 'loop_')):
-                parts = line.split()
-                try:
-                    atom = Atom(
-                        number = int(parts[id_idx]),
-                        residue = parts[label_seq_id_idx] if label_seq_id_idx != -1 else '?',
-                        type = parts[label_atom_id_idx],
-                        chain = parts[label_asym_id_idx],
-                        x = float(parts[cartn_x_idx]),
-                        y = float(parts[cartn_y_idx]),
-                        z = float(parts[cartn_z_idx])
-                    )
-                    self.atoms.append(atom)
-                except (IndexError, ValueError):
-                    continue 
-
-    def predict_crosslinks(self, residues_1: str, residues_2: str, 
+    def predict_crosslinks(self, pcd: ProteinChainDataset, residues_1: str, residues_2: str, 
                           min_length: float, max_length: float) -> 'CrossLinkDataset':
-        # Implementation not shown for brevity
-        pass
+        crosslinks = set()
+        res_1 = list(residues_1)
+        res_2 = list(residues_2)
+        link = None
+        distance = 0
+        aa_pairs = None
+        terminus_exhist = False
+
+        for aa1 in res_1:
+            if aa1 in '{}':
+                terminus_exhist = True
+                continue
+            for aa2 in res_2:
+                if aa2 in '{}':
+                    terminus_exhist = True
+                    continue
+                for x in self.atoms:
+                    if x.type != 'CA' or x.residue != aa1:
+                        continue
+                    for y in self.atoms:
+                        if y.type != 'CA' or y.residue != aa2:
+                            continue
+
+                        distance = x.distance_to(y)
+                        if distance <= max_length and distance >= min_length:
+                            aa_pairs = sorted([(x.chain, x.number), (y.chain, y.number)])
+                            link = CrossLinkEntity(aa_pairs[0][0], '', '', '', aa_pairs[0][1], 
+                                                   aa_pairs[1][0], '', '', '', aa_pairs[1][1], 
+                                                   '', 'Predicted', None)
+                            crosslinks.add(link)
+
+        if terminus_exhist:
+            chain_size = dict()
+            for protein, chain in pcd:
+                max_atom = 0
+                for x in self.atoms:
+                    if x.chain == chain and x.number > max_atom:
+                        max_atom = x.number
+
+                chain_size[chain] = max_atom
+                #TODO Continue here
+
+        return CrossLinkDataset(list(crosslinks))
 
     def __iter__(self):
         return iter(self.atoms)
@@ -352,7 +488,7 @@ class CrossLinkDataset:
         self.size = len(self.xls)
         self.xls_site_count = filtered_xls_site_count
 
-    def blank_crosslink_counter(self)  -> 'CrossLinkDataset':
+    def blank_replica_counter(self)  -> 'CrossLinkDataset':
         for key in self.xls_site_count.keys():
             self.xls_site_count[key] = 1  
         return self
@@ -671,17 +807,16 @@ class FastaEntity:
 
         self.raw_sequence = sequence
 
-        try:
-            if fasta_format == 'Uniprot':
-                self.db_id, self.prot_gene = self._split_uniprot_fasta_header(header)
-            elif fasta_format == 'Araport11':
-                self.db_id, self.prot_gene = self._split_araport11_fasta_header(header)
-            elif fasta_format == 'Custom':
-                self.db_id, self.prot_gene = self.raw_header, self.raw_header
-            else:
-                raise Exception()
-        except Exception as e:
-                raise ValueError(f'ERROR! Wrong FASTA format: {fasta_format}')
+        if fasta_format == 'Uniprot':
+            self.db_id, self.prot_gene = self._split_uniprot_fasta_header(header)
+        elif fasta_format == 'Araport11':
+            self.db_id, self.prot_gene = self._split_araport11_fasta_header(header)
+        elif fasta_format == 'Custom':
+            self.db_id, self.prot_gene = self.raw_header, self.raw_header
+        else:
+            raise ValueError(f'Wrong FASTA format: {fasta_format}')
+
+                
 
         #MeroX format of sequence with N-term and C-term as figure brackets
         self.sequence = '{' + self.raw_sequence + '}' 

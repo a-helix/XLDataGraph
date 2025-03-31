@@ -5,7 +5,7 @@ import copy
 
 from typing import List
 
-from xldg.core import FastaEntity, FastaDataset, DomainEntity, DomainDataset, ProteinChainDataset, CrossLinkDataset
+from xldg.core import Atom, FastaEntity, FastaDataset, DomainEntity, DomainDataset, ProteinChainDataset, CrossLinkDataset
 from xldg.data import Path, MeroX, CrossLink
 
 class TestProteinChainDataset:
@@ -28,6 +28,13 @@ class TestProteinChainDataset:
         dimer_content = Path.read_to_string(dimer_path)
         dimer_pcd = ProteinChainDataset(dimer_content)
         assert len(monomer_pcd) == 2 and len(dimer_pcd) == 2
+
+class TestAtom:
+    def test_distance_to(self):
+        atom1 = Atom(1, "12A", "CA", "A", 1.0, 2.0, 3.0)
+        atom2 = Atom(2, "15B", "CB", "A", 4.0, 6.0, 8.0)
+        distance = atom1.distance_to(atom2)
+        assert  round(distance, 3) == 7.071
 
 class TestCrossLinkDataset:
     @pytest.fixture(autouse=True)
@@ -107,13 +114,13 @@ class TestCrossLinkDataset:
         self.combined_dataset.remove_homotypic_crosslinks()
         assert len(self.combined_dataset) == 0
 
-    def test_positive_blank_crosslink_counter(self):
+    def test_positive_blank_replica_counter(self):
         unmodified_dataset = self.combined_dataset
         unmodified_dataset.filter_by_replica(max_rep=1)
         len_unmodified_dataset = len(unmodified_dataset)
 
         len_before = len(self.combined_dataset)
-        self.combined_dataset.blank_crosslink_counter()
+        self.combined_dataset.blank_replica_counter()
         self.combined_dataset.filter_by_replica(max_rep=1)
         len_after = len(self.combined_dataset)
         assert len_unmodified_dataset == 281 and len_before == len_after
@@ -137,7 +144,7 @@ class TestCrossLinkDataset:
     def test_positive_monomer_export_for_chimerax(self):
         pcd_content = Path.read_to_string(os.path.join(self.CWD, "monomer.pcd"))
         pcd = ProteinChainDataset(pcd_content)
-        self.combined_dataset.blank_crosslink_counter()
+        self.combined_dataset.blank_replica_counter()
         self.combined_dataset.remove_interprotein_crosslinks()
         self.combined_dataset.export_for_chimerax(pcd, self.chimerax_folder, "monomer")
 
@@ -148,7 +155,7 @@ class TestCrossLinkDataset:
     def test_positive_dimer_export_for_chimerax(self):
         pcd_content = Path.read_to_string(os.path.join(self.CWD, "dimer.pcd"))
         pcd = ProteinChainDataset(pcd_content)
-        self.combined_dataset.blank_crosslink_counter()
+        self.combined_dataset.blank_replica_counter()
         self.combined_dataset.remove_intraprotein_crosslinks()
         self.combined_dataset.remove_homotypic_crosslinks()
         self.combined_dataset.export_for_chimerax(pcd, self.chimerax_folder, "dimer")
@@ -160,7 +167,7 @@ class TestCrossLinkDataset:
     def test_positive_arguments_export_for_chimerax(self):
         pcd_content = Path.read_to_string(os.path.join(self.CWD, "dimer.pcd"))
         pcd = ProteinChainDataset(pcd_content)
-        self.combined_dataset.blank_crosslink_counter()
+        self.combined_dataset.blank_replica_counter()
         self.combined_dataset.export_for_chimerax(pcd, self.chimerax_folder, "color", 0.3, 10, "#D3D3D3", "#808080")
 
         interprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_interprotein_xl_1_rep.pb"), True)
