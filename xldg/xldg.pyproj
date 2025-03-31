@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>a9d1593d-9273-4f28-aa52-952659dd5c68</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>tests\data_test.py</StartupFile>
+    <StartupFile>examples\gephi.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -25,6 +25,8 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="examples\circus.py" />
+    <Compile Include="examples\gephi.py" />
     <Compile Include="examples\gephi_export.py" />
     <Compile Include="src\xldg\api.py" />
     <Compile Include="src\xldg\graphics.py" />
@@ -41,15 +43,14 @@
     <Folder Include="src\xldg\" />
     <Folder Include="tests\" />
     <Folder Include="tests\files\data\" />
+    <Folder Include="tests\files\data\crosslink_test\gephi\" />
+    <Folder Include="tests\files\data\dmn\" />
     <Folder Include="tests\files\data\path_test\" />
     <Folder Include="tests\files\core\" />
     <Folder Include="tests\files\data\merox\" />
-    <Folder Include="tests\test_data\" />
-    <Folder Include="tests\test_data\circos_test\" />
+    <Folder Include="tests\files\graphics\" />
+    <Folder Include="tests\files\graphics\circos_test\" />
     <Folder Include="tests\files\data\fasta\" />
-    <Folder Include="tests\test_data\dmn\" />
-    <Folder Include="tests\test_data\utils_test\" />
-    <Folder Include="tests\test_data\utils_test\__pycache__\" />
     <Folder Include="tests\files\data\crosslink_test\" />
     <Folder Include="tests\files\data\crosslink_test\chimerax\" />
     <Folder Include="tests\files\" />
@@ -66,6 +67,15 @@
     </Interpreter>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="tests\files\data\crosslink_test\gephi\aais_for_gephi_reference_dimer.gexf" />
+    <Content Include="tests\files\data\crosslink_test\gephi\aais_for_gephi_reference_monomer.gexf" />
+    <Content Include="tests\files\data\crosslink_test\gephi\ppis_for_gephi_reference_dimer.gexf" />
+    <Content Include="tests\files\data\crosslink_test\gephi\ppis_for_gephi_reference_monomer.gexf" />
+    <Content Include="tests\files\data\crosslink_test\chimerax\two_dimers_complex_structure_reference.cif" />
+    <Content Include="tests\files\data\crosslink_test\chimerax\two_monomers_complex_structure_reference.cif" />
+    <Content Include="tests\files\data\dmn\domains_1.dmn" />
+    <Content Include="tests\files\data\dmn\domains_2.dmn" />
+    <Content Include="tests\files\data\fasta\ribosom_E_coli_K12.fas" />
     <Content Include="tests\files\data\path_test\abcd1234_file3.txt" />
     <Content Include="tests\files\data\path_test\abcd1234_file2.txt" />
     <Content Include="tests\files\data\path_test\abcd1234_file1.txt" />
@@ -75,10 +85,6 @@
     <Content Include="tests\files\data\fasta\fasta_1.fasta" />
     <Content Include="tests\files\data\fasta\fasta_2.fasta" />
     <Content Include="tests\files\data\fasta\fasta_combined.fasta" />
-    <Content Include="tests\test_data\utils_test\__pycache__\utils_test.cpython-311-pytest-8.3.5.pyc" />
-    <Content Include="tests\test_data\utils_test\__pycache__\utils_test.cpython-312-pytest-8.3.5.pyc" />
-    <Content Include="tests\test_data\utils_test\__pycache__\utils_test.cpython-312.pyc" />
-    <Content Include="tests\test_data\utils_test\__pycache__\__init__.cpython-312.pyc" />
     <Content Include="tests\files\data\crosslink_test\chimerax\color_heterotypical_interprotein_reference.pb" />
     <Content Include="tests\files\data\crosslink_test\chimerax\color_heterotypical_intraprotein_reference.pb" />
     <Content Include="tests\files\data\crosslink_test\chimerax\color_homotypical_reference.pb" />
@@ -92,8 +98,16 @@
     <Content Include="tests\files\data\merox\dataset_1.zhrm" />
     <Content Include="tests\files\data\merox\dataset_2.zhrm" />
     <Content Include="tests\files\data\merox\dataset_3.zhrm" />
-    <Content Include="tests\test_data\dmn\domains_1.dmn" />
-    <Content Include="tests\test_data\dmn\domains_2.dmn" />
+    <Content Include="tests\files\graphics\circos_test\circos_reference_basic.svg" />
+    <Content Include="tests\files\graphics\circos_test\circos_reference_extended_cosmetics.svg" />
+    <Content Include="tests\files\graphics\circos_test\circos_reference_homotypic.svg" />
+    <Content Include="tests\files\graphics\circos_test\circos_reference_inter.svg" />
+    <Content Include="tests\files\graphics\circos_test\circos_reference_intra.svg" />
+    <Content Include="tests\files\graphics\circos_test\circos_reference_max.svg" />
+    <Content Include="tests\files\graphics\circos_test\circos_reference_min.svg" />
+    <Content Include="tests\files\graphics\circos_test\circos_reference_minimal_cosmetics.svg" />
+    <Content Include="tests\files\graphics\circos_test\circos_reference_plot_all_proteins_basic.svg" />
+    <Content Include="tests\files\graphics\circos_test\circos_reference_plot_all_proteins_modified.svg" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

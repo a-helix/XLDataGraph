@@ -1,7 +1,7 @@
 import pytest
 import os
 import re
-from xldg.data import Path, Fasta, MeroX, CrossLink
+from xldg.data import Path, Fasta, MeroX, Domain, CrossLink, Util
 
 class TestPath:
     @pytest.fixture(autouse=True)
@@ -113,6 +113,21 @@ class TestFasta:
         fasta = Fasta.load_data(self.all_fasta, 'Custom')
         assert len(fasta) == 3
 
+class TestDomain:
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        # Current Working Directory
+        CWD = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'dmn')
+        self.single_domain =  os.path.join(CWD, 'domains_1.dmn')
+        self.all_domains =  Path.list_given_type_files(CWD, 'dmn')
+
+    def test_single_load_data(self):
+        fasta =Domain.load_data(self.single_domain)
+        assert len(fasta) == 10
+
+    def test_multiple_load_data(self):
+        fasta = Domain.load_data(self.all_domains)
+        assert len(fasta) == 19
 
 class TestMeroX:
     @pytest.fixture(autouse=True)
@@ -239,84 +254,96 @@ class TestCrossLink:
             len_before == len_after
         )
 
-    # def test_positive_unique_elements(self):
-    #     first_dataset = self.folder_content[0]
-    #     last_dataset = self.folder_content[-1]
+    def test_positive_get_unique(self):
+        first_dataset = self.folder_content[0]
+        last_dataset = self.folder_content[-1]
 
-    #     unique_first, unique_last = CrossLinkDataset.unique_elements(first_dataset, last_dataset)
-    #     common_first, common_last = CrossLinkDataset.common_elements(first_dataset, last_dataset)
-    #     assert (
-    #         len(unique_first) + len(common_first) == len(first_dataset) and
-    #         len(unique_last) + len(common_last) == len(last_dataset)
-    #     )
+        unique_first, unique_last = CrossLink.get_unique(first_dataset, last_dataset)
+        common_first, common_last = CrossLink.get_common(first_dataset, last_dataset)
+        assert (
+            len(unique_first) + len(common_first) == len(first_dataset) and
+            len(unique_last) + len(common_last) == len(last_dataset)
+        )
 
-    # def test_negative_unique_elements(self):
-    #     len_before = len(self.combined_dataset)
+    def test_negative_get_unique(self):
+        len_before = len(self.combined_dataset)
 
-    #     reference_dataset = copy.deepcopy(self.combined_dataset)
-    #     reference_dataset.remove_intraprotein_crosslinks()
-    #     reference_dataset.remove_interprotein_crosslinks()
-    #     reference_dataset.remove_homotypic_crosslinks()
+        reference_dataset = CrossLink.remove_interprotein(self.combined_dataset)
+        reference_dataset = CrossLink.remove_intraprotein(reference_dataset)
+        reference_dataset = CrossLink.remove_homotypic(reference_dataset)
     
-    #     unique_combined, unique_reference = CrossLinkDataset.unique_elements(self.combined_dataset, reference_dataset)
-    #     len_after = len(self.combined_dataset)
-    #     assert (
-    #         len_before == len_after and
-    #         len(unique_reference) == 0 and
-    #         len(unique_combined) == len_before
-    #     )
+        unique_combined, unique_reference = CrossLink.get_unique(self.combined_dataset, reference_dataset)
+        len_after = len(self.combined_dataset)
+        assert (
+            len_before == len_after and
+            len(unique_reference) == 0 and
+            len(unique_combined) == len_before
+        )
 
-    # def test_positive_common_elements(self):
-    #     first_dataset = self.folder_content[0]
-    #     last_dataset = self.folder_content[-1]
+    def test_positive_get_common(self):
+        first_dataset = self.folder_content[0] 
+        last_dataset = self.folder_content[-1] 
 
-    #     common_first, common_last = CrossLinkDataset.common_elements(first_dataset, last_dataset)
+        common_first, common_last = CrossLink.get_common(first_dataset, last_dataset)
 
-    #     for xl in common_first:
-    #         if xl not in common_last:
-    #             raise ValueError("Common elements are not the same")
+        for xl in common_first:
+            if xl not in common_last:
+                raise ValueError("Common elements are not the same")
 
-    #     assert len(common_first) == len(common_last)
+        assert len(common_first) == len(common_last)
 
-    # def test_negative_common_elements(self):
-    #     first_dataset = self.folder_content[0]
-    #     last_dataset = self.folder_content[-1]
+    def test_negative_get_common(self):
+        first_dataset = self.folder_content[0]
+        last_dataset = self.folder_content[-1]
 
-    #     last_dataset.remove_intraprotein_crosslinks()
-    #     last_dataset.remove_interprotein_crosslinks()
-    #     last_dataset.remove_homotypic_crosslinks()
+        last_dataset = CrossLink.remove_interprotein(last_dataset)
+        last_dataset = CrossLink.remove_intraprotein(last_dataset)
+        last_dataset = CrossLink.remove_homotypic(last_dataset)
 
-    #     common_first, common_last = CrossLinkDataset.common_elements(first_dataset, last_dataset)
-    #     for xl in common_first:
-    #         if xl not in first_dataset:
-    #             raise ValueError("Common elements are not the same")
+        common_first, common_last = CrossLink.get_common(first_dataset, last_dataset)
+        assert len(common_last) == 0 and len(common_first) == 0
 
-    #     assert len(common_last) == 0 and len(common_first) == 0
+    def test_positive_combine_selected(self):
+        first_dataset = self.folder_content[0]
+        last_dataset = self.folder_content[-1]
 
-    # def test_positive_combine_datasets(self):
-    #     first_dataset = self.folder_content[0]
-    #     last_dataset = self.folder_content[-1]
+        combined_dataset = CrossLink.combine_selected(self.folder_content, [0, 2])
+        for xl in combined_dataset:
+            if xl in first_dataset or xl in last_dataset:
+                continue
+            else:
+                raise ValueError("Combined elements are not the same")
 
-    #     combined_dataset = CrossLinkDataset.combine_datasets([first_dataset, last_dataset])
-    #     for xl in combined_dataset:
-    #         if xl in first_dataset or xl in last_dataset:
-    #             continue
-    #         else:
-    #             raise ValueError("Combined elements are not the same")
+        assert len(combined_dataset) == 339 and len(combined_dataset) == len(first_dataset) + len(last_dataset)
 
-    #     assert len(combined_dataset) == 339 and len(combined_dataset) == len(first_dataset) + len(last_dataset)
+    def test_negative_combine_selected(self):
+        first_dataset = self.folder_content[0]
 
-    # def test_negative_combine_datasets(self):
-    #     first_dataset = self.folder_content[0]
-    #     last_dataset = self.folder_content[-1]
+        last_dataset = CrossLink.remove_interprotein(self.folder_content[-1])
+        last_dataset = CrossLink.remove_intraprotein(last_dataset)
+        last_dataset = CrossLink.remove_homotypic(last_dataset)
+        self.folder_content[2] = last_dataset
 
-    #     last_dataset.remove_intraprotein_crosslinks()
-    #     last_dataset.remove_interprotein_crosslinks()
-    #     last_dataset.remove_homotypic_crosslinks()
+        combined_dataset = CrossLink.combine_selected(self.folder_content, [0, 2])
+        for xl in combined_dataset:
+            if xl not in first_dataset:
+                raise ValueError("Combined elements are not the same")
 
-    #     combined_dataset = CrossLinkDataset.combine_datasets([first_dataset, last_dataset])
-    #     for xl in combined_dataset:
-    #         if xl not in first_dataset:
-    #             raise ValueError("Combined elements are not the same")
+        assert len(combined_dataset) == len(first_dataset)
 
-    #     assert len(combined_dataset) == len(first_dataset)
+class TestUtil:
+    def test_positive_generate_list_of_integers(self):
+        single_sample = Util.generate_list_of_integers([0, 5])
+        multiple_sample = Util.generate_list_of_integers([0, 2], [4, 5])
+        
+        single_reference = [0, 1, 2, 3, 4, 5]
+        multiple_refrence = [0, 1, 2, 4, 5]
+
+        assert (
+           single_sample == single_reference and
+           multiple_sample == multiple_refrence
+        )
+
+    def test_exception_generate_list_of_integers(self):
+        with pytest.raises(ValueError, match=f"Start value 5 is greater than end value 0"):
+             sample = Util.generate_list_of_integers([5, 0])

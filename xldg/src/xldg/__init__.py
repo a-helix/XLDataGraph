@@ -1,8 +1,23 @@
-# from xldg.graphics import Circos, CircosConfig  
-from xldg.core import FastaEntity, FastaDataset, DomainEntity, DomainDataset
+from xldg.core import ProteinChainDataset, CrossLinkEntity, CrossLinkDataset, FastaEntity, FastaDataset, DomainEntity, DomainDataset, ProteinStructureDataset
+from xldg.data import Path, Fasta, Domain, MeroX, CrossLink, ProteinChain, ProteinStructure, Util
+from xldg.graphics import CircosConfig, Circos 
 
 __version__ = "0.2.2"
-__all__ = ["FastaEntity",
-           "FastaDataset",
-           "DomainEntity",
-           "DomainDataset"]
+__all__ = ["ProteinChainDataset", 
+           "CrossLinkEntity", 
+           "CrossLinkDataset", 
+           "FastaEntity", 
+           "FastaDataset", 
+           "DomainEntity", 
+           "DomainDataset", 
+           "ProteinStructureDataset", 
+           "Path", 
+           "Fasta", 
+           "Domain", 
+           "MeroX", 
+           "CrossLink", 
+           "ProteinChain", 
+           "ProteinStructure", 
+           "Util",
+           "CircosConfig",
+           "Circos"]

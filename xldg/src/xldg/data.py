@@ -1,11 +1,10 @@
-# from dataclasses import dataclass
 import zipfile
 import os
 import io
 import re
 import sys
 import copy
-from typing import List, Tuple, Set, Union, Optional
+from typing import List, Tuple, Union, Optional
 
 from xldg.core import FastaDataset, DomainDataset, CrossLinkEntity, CrossLinkDataset, ProteinChainDataset, ProteinStructureDataset
 
@@ -73,7 +72,7 @@ class Fasta:
         
         for file_path in path:
             Path.validate_file_existence(file_path)  
-            Path.confirm_file_format(file_path, 'fasta') 
+            Path.confirm_file_format(file_path, 'fasta', 'fas') 
             all_contents.append(Path.read_to_string(file_path)) 
 
         combined_content = "\n".join(all_contents)  
@@ -86,10 +85,20 @@ class Fasta:
         return fasta_copy.filter_by_crosslinks(fasta, crosslinks)
 
 class Domain:
-    def load_data(path: Union[str, List[str]], fasta_format: str, remove_parenthesis: bool = False) -> 'FastaDataset':
-        Path.validate_file_existence(path)
-        Path.confirm_file_format(path, '.dmn')
-        return DomainDataset(path, fasta_format, remove_parenthesis)
+    @staticmethod
+    def load_data(path: Union[str, List[str]]) -> 'DomainDataset':
+        if isinstance(path, str):
+            path = [path] 
+        
+        all_contents = [] 
+        
+        for file_path in path:
+            Path.validate_file_existence(file_path)  
+            Path.confirm_file_format(file_path, 'dmn') 
+            all_contents.append(Path.read_to_string(file_path)) 
+
+        combined_content = "\n".join(all_contents)  
+        return DomainDataset(combined_content)
 
 class MeroX:
     @staticmethod
@@ -274,22 +283,28 @@ class CrossLink:
     @staticmethod
     def combine_selected(dataset_list: List['CrossLinkDataset'], indexes: List[int]) -> 'CrossLinkDataset':
         biggest_index = max(indexes)
-        if biggest_index >= len(dataset_list):
-            raise IndexError(f"ERROR! index {biggest_index} out of given dataset_list range")
+        smallest_index = min(indexes)
+        last_dataset_index = len(dataset_list) - 1
 
-        buffer = []
+        if biggest_index > len(dataset_list):
+            raise IndexError(f"Index {biggest_index} out of given dataset_list range 0 to {last_dataset_index}")
+        if smallest_index < 0:
+            raise IndexError(f"Index {smallest_index} out of given dataset_list range 0 to {last_dataset_index}")
+
+        buffer = None
         for x in indexes:
-            buffer.append(dataset_list[x])
+            if buffer is None:
+                buffer = dataset_list[x]
+            else:
+                buffer += dataset_list[x]
 
-        return CrossLinkDataset.combine_datasets(buffer) 
+        return buffer 
 
     @staticmethod
     def get_common(
         first_dataset: 'CrossLinkDataset', 
         second_dataset: 'CrossLinkDataset'
                    ) -> Tuple['CrossLinkDataset', 'CrossLinkDataset']:
-        if len(first_dataset) == 0 or len(second_dataset) == 0:
-            return first_dataset, second_dataset
         return CrossLinkDataset.common_elements(first_dataset, second_dataset)
 
     @staticmethod
@@ -297,8 +312,6 @@ class CrossLink:
         first_dataset: 'CrossLinkDataset', 
         second_dataset: 'CrossLinkDataset'
                    ) -> Tuple['CrossLinkDataset', 'CrossLinkDataset']:
-        if len(first_dataset) == 0 or len(second_dataset) == 0:
-            return first_dataset, second_dataset
         return CrossLinkDataset.unique_elements(first_dataset, second_dataset)
 
 
@@ -318,8 +331,6 @@ class ProteinStructure:
         extension = Path.confirm_file_format(path, '.pdb', '.cif')
         content = Path.read_to_string(path)
         return ProteinStructureDataset(content, extension);
-
-
 
 
 class Util:

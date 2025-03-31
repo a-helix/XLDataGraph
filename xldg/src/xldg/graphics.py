@@ -184,7 +184,7 @@ class Circos:
                     track2.rect(domain.start, domain.end, fc=domain.color)
             
             track._start += 1 # Remove zero lable of the plot
-            track.xticks_by_interval(self.config.lable_interval, label_size = self.config.ruler_font_size)
+            track.xticks_by_interval(self.config.label_interval, label_size = self.config.ruler_font_size)
             track._start -= 1
 
     def _plot_xls(self) -> None:

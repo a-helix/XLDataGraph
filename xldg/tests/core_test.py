@@ -3,331 +3,321 @@ import os
 import sys
 import copy
 
+from typing import List
+
 from xldg.core import FastaEntity, FastaDataset, DomainEntity, DomainDataset, ProteinChainDataset, CrossLinkDataset
-from xldg.data import Path, MeroX
+from xldg.data import Path, MeroX, CrossLink
 
-# class TestProteinChainDataset:
-#     @pytest.fixture(autouse=True)
-#     def setup(self):
-#         # Current Working Directory
-#         self.CWD = os.path.join(os.getcwd(), "tests", "test_data", "xl_test")
+class TestProteinChainDataset:
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        # Current Working Directory
+        self.CWD = os.path.join(os.getcwd(), "tests", "files", "data", "crosslink_test")
 
-#     def test_pcd_file_path_argument_constructor_ProteinChainDataset(self):
-#         path = os.path.join(self.CWD, "non_existent_file.pcd")
-#         with pytest.raises(FileNotFoundError):
-#             pcd = ProteinChainDataset(path)
+    def test_file_exception_constructor(self):
+        path = os.path.join(self.CWD, "invalid_file.pcd")
+        with pytest.raises(ValueError):
+            pcd = ProteinChainDataset(path)
 
-#     def test_file_exception_constructor_ProteinChainDataset(self):
-#         path = os.path.join(self.CWD, "invalid_file.pcd")
-#         with pytest.raises(ValueError):
-#             pcd = ProteinChainDataset(path)
+    def test_positive_constructor(self):
+        monomer_path = os.path.join(self.CWD, "monomer.pcd")
+        monomer_content = Path.read_to_string(monomer_path)
+        monomer_pcd = ProteinChainDataset( monomer_content)
 
-#     def test_positive_constructor_ProteinChainDataset(self):
-#         monomer_path = os.path.join(self.CWD, "monomer.pcd")
-#         monomer_pcd = ProteinChainDataset(monomer_path)
-#         dimer_path = os.path.join(self.CWD, "dimer.pcd")
-#         dimer_pcd = ProteinChainDataset(dimer_path)
-#         assert len(monomer_pcd) == 2 and len(dimer_pcd) == 2
+        dimer_path = os.path.join(self.CWD, "dimer.pcd")
+        dimer_content = Path.read_to_string(dimer_path)
+        dimer_pcd = ProteinChainDataset(dimer_content)
+        assert len(monomer_pcd) == 2 and len(dimer_pcd) == 2
 
-# class TestCrossLinkDataset:
-#     @pytest.fixture(autouse=True)
-#     def setup(self):
-#         # Current Working Directory
-#         self.CWD = os.path.join(os.getcwd(), "tests", "test_data", "xl_test")
-#         # Test Data Folder
-#         TDF = os.path.join(os.getcwd(), "tests", "test_data", "zhrm")
-#         self.chimerax_folder = os.path.join(self.CWD, 'chimerax')
+class TestCrossLinkDataset:
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        # Current Working Directory
+        self.CWD = os.path.join(os.getcwd(), "tests", "files", "data", "crosslink_test")
+        # Test Data Folder
+        TDF = os.path.join(os.getcwd(), "tests", "files", "data", "merox")
 
-#         zhrm_folder_path = Path.list_given_type_files(TDF, '.zhrm')
-#         self.folder_content = MeroX.read_data(zhrm_folder_path, 'DSBU')
-#         self.combined_dataset = Crosslink.combine_all_datasets(self.folder_content)
+        self.chimerax_folder = os.path.join(self.CWD, 'chimerax')
+        self.gephi_folder = os.path.join(self.CWD, 'gephi')
 
-#     def _read_file(self, file_path: str, delete: bool = False):
-#         content = None
-#         with open(file_path, "r", encoding="utf-8") as f:
-#             content = f.read()
+        zhrm_folder_path = Path.list_given_type_files(TDF, 'zhrm')
+        self.folder_content = MeroX.load_data(zhrm_folder_path, 'DSBU')
+        self.combined_dataset = CrossLink.combine_all(self.folder_content)
 
-#         if delete: 
-#             os.remove(file_path)
-#         return content
+    def _read_file(self, file_path: str, delete: bool = False):
+        content = None
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
 
-#     def test_negative_filter_by_score(self):
-#         len_before = len(self.combined_dataset)
-#         self.combined_dataset.filter_by_score(0)
-#         len_after = len(self.combined_dataset)
-#         assert len_before == len_after
+        if delete: 
+            os.remove(file_path)
+        return content
 
-#     def test_positive_min_argument_filter_by_score(self):
-#         self.combined_dataset.filter_by_score(150)
-#         assert len(self.combined_dataset) == 25
+    def test_negative_filter_by_score(self):
+        len_before = len(self.combined_dataset)
+        self.combined_dataset.filter_by_score(0)
+        len_after = len(self.combined_dataset)
+        assert len_before == len_after
 
-#     def test_positive_max_argument_filter_by_score(self):
-#         self.combined_dataset.filter_by_score(max_score=1)
-#         assert len(self.combined_dataset) == 66
+    def test_positive_min_argument_filter_by_score(self):
+        self.combined_dataset.filter_by_score(150)
+        assert len(self.combined_dataset) == 25
 
-#     def test_positive_min_and_max_arguments_filter_by_score(self):
-#         self.combined_dataset.filter_by_score(120, 150)
-#         assert len(self.combined_dataset) == 36
+    def test_positive_max_argument_filter_by_score(self):
+        self.combined_dataset.filter_by_score(max_score=1)
+        assert len(self.combined_dataset) == 66
 
-#     def test_exception_arguments_filter_by_score(self):
-#         with pytest.raises(ValueError, match = "ERROR! max_score is smaller than min_score"):
-#             filtered_data = Crosslink.filter_by_score(self.combined_dataset, 1, 0)
+    def test_positive_min_and_max_arguments_filter_by_score(self):
+        self.combined_dataset.filter_by_score(120, 150)
+        assert len(self.combined_dataset) == 36
 
-#     def test_exception_filter_by_replica(self):
-#         with pytest.raises(ValueError, match = "ERROR! max_rep is smaller than min_rep"):
-#             self.combined_dataset.filter_by_replica(1, 0)
+    def test_negative_filter_by_replica(self):
+        len_before = len(self.combined_dataset)
+        self.combined_dataset.filter_by_replica()
+        len_after = len(self.combined_dataset)
+        assert len_before == len_after
 
-#     def test_negative_filter_by_replica(self):
-#         len_before = len(self.combined_dataset)
-#         self.combined_dataset.filter_by_replica()
-#         len_after = len(self.combined_dataset)
-#         assert len_before == len_after
+    def test_positive_min_argument_filter_by_replica(self):
+        self.combined_dataset.filter_by_replica(min_rep=2)
+        assert len(self.combined_dataset) == 146
 
-#     def test_positive_min_argument_filter_by_replica(self):
-#         self.combined_dataset.filter_by_replica(min_rep=2)
-#         assert len(self.combined_dataset) == 146
+    def test_positive_max_argument_filter_by_replica(self):
+        self.combined_dataset.filter_by_replica(max_rep=1)
+        assert len(self.combined_dataset) == 281
 
-#     def test_positive_max_argument_filter_by_replica(self):
-#         self.combined_dataset.filter_by_replica(max_rep=1)
-#         assert len(self.combined_dataset) == 281
+    def test_positive_min_max_argument_filter_by_replica(self):
+        self.combined_dataset.filter_by_replica(2, 2)
+        assert len(self.combined_dataset) == 146
 
-#     def test_positive_min_max_argument_filter_by_replica(self):
-#         self.combined_dataset.filter_by_replica(2, 2)
-#         assert len(self.combined_dataset) == 146
+    def test_positive_remove_interprotein_crosslinks(self):
+        self.combined_dataset.remove_interprotein_crosslinks()
+        assert len(self.combined_dataset) == 296
 
-#     def test_positive_remove_interprotein_crosslinks(self):
-#         self.combined_dataset.remove_interprotein_crosslinks()
-#         assert len(self.combined_dataset) == 296
+    def test_positive_remove_intraprotein_crosslinks(self):
+        self.combined_dataset.remove_intraprotein_crosslinks()
+        assert len(self.combined_dataset) == 138
 
-#     def test_positive_remove_intraprotein_crosslinks(self):
-#         self.combined_dataset.remove_intraprotein_crosslinks()
-#         assert len(self.combined_dataset) == 138
+    def test_positive_remove_homotypic_crosslinks(self):
+        self.combined_dataset.remove_homotypic_crosslinks()
+        assert len(self.combined_dataset) == 420
 
-#     def test_positive_remove_homotypic_crosslinks(self):
-#         self.combined_dataset.remove_homotypic_crosslinks()
-#         assert len(self.combined_dataset) == 420
+    def test_positive_remove_all_xls(self):
+        self.combined_dataset.remove_interprotein_crosslinks()
+        self.combined_dataset.remove_intraprotein_crosslinks()
+        self.combined_dataset.remove_homotypic_crosslinks()
+        assert len(self.combined_dataset) == 0
 
-#     def test_positive_remove_all_xls(self):
-#         self.combined_dataset.remove_interprotein_crosslinks()
-#         self.combined_dataset.remove_intraprotein_crosslinks()
-#         self.combined_dataset.remove_homotypic_crosslinks()
-#         assert len(self.combined_dataset) == 0
+    def test_positive_blank_crosslink_counter(self):
+        unmodified_dataset = self.combined_dataset
+        unmodified_dataset.filter_by_replica(max_rep=1)
+        len_unmodified_dataset = len(unmodified_dataset)
 
-#     def test_positive_blank_crosslink_counter(self):
-#         unmodified_dataset = self.combined_dataset
-#         unmodified_dataset.filter_by_replica(max_rep=1)
-#         len_unmodified_dataset = len(unmodified_dataset)
+        len_before = len(self.combined_dataset)
+        self.combined_dataset.blank_crosslink_counter()
+        self.combined_dataset.filter_by_replica(max_rep=1)
+        len_after = len(self.combined_dataset)
+        assert len_unmodified_dataset == 281 and len_before == len_after
 
-#         len_before = len(self.combined_dataset)
-#         self.combined_dataset.blank_crosslink_counter()
-#         self.combined_dataset.filter_by_replica(max_rep=1)
-#         len_after = len(self.combined_dataset)
-#         assert len_unmodified_dataset == 281 and len_before == len_after
+    def test_positive_tsv_save_crosslink_counter(self):
+        file_name = 'save_crosslink_counter.tsv'
+        self.combined_dataset.save_crosslink_counter(self.CWD, file_name)
 
-#     def test_positive_tsv_save_crosslink_counter(self):
-#         file_name = 'save_crosslink_counter.tsv'
-#         self.combined_dataset.save_crosslink_counter(self.CWD, file_name)
+        content1 = self._read_file(os.path.join(self.CWD, file_name), True)
+        content2 = self._read_file(os.path.join(self.CWD, 'counter_reference.tsv'))
+        assert content1 == content2
 
-#         content1 = self._read_file(os.path.join(self.CWD, file_name), True)
-#         content2 = self._read_file(os.path.join(self.CWD, 'counter_reference.tsv'))
-#         assert content1 == content2
+    def test_positive_csv_save_crosslink_counter(self):
+        file_name = 'save_crosslink_counter.csv'
+        self.combined_dataset.save_crosslink_counter(self.CWD, file_name, ',')
 
-#     def test_positive_csv_save_crosslink_counter(self):
-#         file_name = 'save_crosslink_counter.csv'
-#         self.combined_dataset.save_crosslink_counter(self.CWD, file_name, ',')
+        content1 = self._read_file(os.path.join(self.CWD, file_name), True)
+        content2 = self._read_file(os.path.join(self.CWD, 'counter_reference.csv'))
+        assert content1 == content2
 
-#         content1 = self._read_file(os.path.join(self.CWD, file_name), True)
-#         content2 = self._read_file(os.path.join(self.CWD, 'counter_reference.csv'))
-#         assert content1 == content2
+    def test_positive_monomer_export_for_chimerax(self):
+        pcd_content = Path.read_to_string(os.path.join(self.CWD, "monomer.pcd"))
+        pcd = ProteinChainDataset(pcd_content)
+        self.combined_dataset.blank_crosslink_counter()
+        self.combined_dataset.remove_interprotein_crosslinks()
+        self.combined_dataset.export_for_chimerax(pcd, self.chimerax_folder, "monomer")
 
-#     def test_positive_monomer_export_for_chimerax(self):
-#         pcd = ProteinChainDataset(os.path.join(self.CWD, "monomer.pcd"))
-#         self.combined_dataset.blank_crosslink_counter()
-#         self.combined_dataset.remove_interprotein_crosslinks()
-#         self.combined_dataset.export_for_chimerax(pcd, self.chimerax_folder, "monomer")
+        content1 = self._read_file(os.path.join(self.chimerax_folder, "monomer_heterotypical_intraprotein_xl_1_rep.pb"), True)
+        content2 = self._read_file(os.path.join(self.chimerax_folder, 'monomer_reference.pb'))
+        assert content1 == content2
 
-#         content1 = self._read_file(os.path.join(self.chimerax_folder, "monomer_heterotypical_intraprotein_xl_1_rep.pb"), True)
-#         content2 = self._read_file(os.path.join(self.chimerax_folder, 'monomer_reference.pb'))
-#         assert content1 == content2
+    def test_positive_dimer_export_for_chimerax(self):
+        pcd_content = Path.read_to_string(os.path.join(self.CWD, "dimer.pcd"))
+        pcd = ProteinChainDataset(pcd_content)
+        self.combined_dataset.blank_crosslink_counter()
+        self.combined_dataset.remove_intraprotein_crosslinks()
+        self.combined_dataset.remove_homotypic_crosslinks()
+        self.combined_dataset.export_for_chimerax(pcd, self.chimerax_folder, "dimer")
 
-#     def test_positive_dimer_export_for_chimerax(self):
-#         pcd = ProteinChainDataset(os.path.join(self.CWD, "dimer.pcd"))
-#         self.combined_dataset.blank_crosslink_counter()
-#         self.combined_dataset.remove_intraprotein_crosslinks()
-#         self.combined_dataset.remove_homotypic_crosslinks()
-#         self.combined_dataset.export_for_chimerax(pcd, self.chimerax_folder, "dimer")
+        content1 = self._read_file(os.path.join(self.chimerax_folder, "dimer_heterotypical_interprotein_xl_1_rep.pb"), True)
+        content2 = self._read_file(os.path.join(self.chimerax_folder, 'dimer_reference.pb'))
+        assert content1 == content2
 
-#         content1 = self._read_file(os.path.join(self.chimerax_folder, "dimer_heterotypical_interprotein_xl_1_rep.pb"), True)
-#         content2 = self._read_file(os.path.join(self.chimerax_folder, 'dimer_reference.pb'))
-#         assert content1 == content2
+    def test_positive_arguments_export_for_chimerax(self):
+        pcd_content = Path.read_to_string(os.path.join(self.CWD, "dimer.pcd"))
+        pcd = ProteinChainDataset(pcd_content)
+        self.combined_dataset.blank_crosslink_counter()
+        self.combined_dataset.export_for_chimerax(pcd, self.chimerax_folder, "color", 0.3, 10, "#D3D3D3", "#808080")
 
-#     def test_positive_arguments_export_for_chimerax(self):
-#         pcd = ProteinChainDataset(os.path.join(self.CWD, "dimer.pcd"))
-#         self.combined_dataset.blank_crosslink_counter()
-#         self.combined_dataset.export_for_chimerax(pcd, self.chimerax_folder, "color", 0.3, 10, "#D3D3D3", "#808080", "#404040")
+        interprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_interprotein_xl_1_rep.pb"), True)
+        intraprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_intraprotein_xl_1_rep.pb"), True)
+        homotypic_pb = self._read_file(os.path.join(self.chimerax_folder, "color_homotypical_xl_1_rep.pb"), True)
 
-#         interprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_interprotein_xl_1_rep.pb"), True)
-#         intraprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_intraprotein_xl_1_rep.pb"), True)
-#         homotypic_pb = self._read_file(os.path.join(self.chimerax_folder, "color_homotypical_xl_1_rep.pb"), True)
+        ref_interprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_interprotein_reference.pb"))
+        ref_intraprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_intraprotein_reference.pb"))
+        ref_homotypic_pb = self._read_file(os.path.join(self.chimerax_folder, "color_homotypical_reference.pb"))
+        assert (
+            interprotein_pb == ref_interprotein_pb and
+            intraprotein_pb == ref_intraprotein_pb and
+            homotypic_pb == ref_homotypic_pb
+        )
 
-#         ref_interprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_interprotein_reference.pb"))
-#         ref_intraprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_intraprotein_reference.pb"))
-#         ref_homotypic_pb = self._read_file(os.path.join(self.chimerax_folder, "color_homotypical_reference.pb"))
-#         assert (
-#             interprotein_pb == ref_interprotein_pb and
-#             intraprotein_pb == ref_intraprotein_pb and
-#             homotypic_pb == ref_homotypic_pb
-#         )
+    def test_positive_export_ppis_for_gephi(self):
+        monomer_content = Path.read_to_string(os.path.join(self.CWD, "monomer.pcd"))
+        dimer_content = Path.read_to_string(os.path.join(self.CWD, "dimer.pcd"))
 
-#     def test_positive_export_ppis_for_gephi(self):
-#         pcd_monomer = ProteinChainDataset(os.path.join(self.CWD, "monomer.pcd"))
-#         pcd_dimer = ProteinChainDataset(os.path.join(self.CWD, "dimer.pcd"))
+        pcd_monomer = ProteinChainDataset(monomer_content)
+        pcd_dimer = ProteinChainDataset(dimer_content)
         
-#         save_monomer = "ppis_for_gephi_test_monomer.gexf"
-#         save_dimer = "ppis_for_gephi_test_dimer.gexf"
+        save_monomer = "ppis_for_gephi_test_monomer.gexf"
+        save_dimer = "ppis_for_gephi_test_dimer.gexf"
 
-#         self.combined_dataset.export_ppis_for_gephi(pcd_monomer, self.chimerax_folder, save_monomer)
-#         self.combined_dataset.export_ppis_for_gephi(pcd_dimer, self.chimerax_folder, save_dimer)
+        self.combined_dataset.export_ppis_for_gephi(pcd_monomer, self.gephi_folder, save_monomer)
+        self.combined_dataset.export_ppis_for_gephi(pcd_dimer, self.gephi_folder, save_dimer)
 
-#         monomer_sample_path = os.path.join(self.chimerax_folder, save_monomer)
-#         monomer_reference_path = os.path.join(self.chimerax_folder, "ppis_for_gephi_reference_monomer.gexf")
+        monomer_sample_path = os.path.join(self.gephi_folder, save_monomer)
+        monomer_reference_path = os.path.join(self.gephi_folder, "ppis_for_gephi_reference_monomer.gexf")
 
-#         dimer_sample_path = os.path.join(self.chimerax_folder, save_dimer)
-#         dimer_reference_path = os.path.join(self.chimerax_folder, "ppis_for_gephi_reference_dimer.gexf")
+        dimer_sample_path = os.path.join(self.gephi_folder, save_dimer)
+        dimer_reference_path = os.path.join(self.gephi_folder, "ppis_for_gephi_reference_dimer.gexf")
 
-#         monomer_sample = self._read_file(monomer_sample_path, True)
-#         monomer_reference = self._read_file(monomer_reference_path)
+        monomer_sample = self._read_file(monomer_sample_path, True)
+        monomer_reference = self._read_file(monomer_reference_path)
 
-#         dimer_sample = self._read_file(dimer_sample_path, True)
-#         dimer_reference = self._read_file(dimer_reference_path)
+        dimer_sample = self._read_file(dimer_sample_path, True)
+        dimer_reference = self._read_file(dimer_reference_path)
 
-#         assert (
-#            dimer_sample == dimer_reference and
-#            monomer_sample == monomer_reference
-#         )
+        assert (
+           dimer_sample == dimer_reference and
+           monomer_sample == monomer_reference
+        )
 
-#     def test_exception_export_ppis_for_gephi(self):
-#         pcd = ProteinChainDataset(os.path.join(self.CWD, "dimer.pcd"))
-#         save_name = "ppis_for_gephi_test.PDF"
+    def test_exception_export_ppis_for_gephi(self):
+        pcd_content = Path.read_to_string(os.path.join(self.CWD, "dimer.pcd"))
+        pcd = ProteinChainDataset(pcd_content)
+        save_name = "ppis_for_gephi_test.PDF"
         
-#         with pytest.raises(ValueError, match = f'ERROR! Wrong file extension in {save_name}. Only ".gexf" format is supported'):
-#             self.combined_dataset.export_ppis_for_gephi(pcd, self.chimerax_folder, save_name)
+        with pytest.raises(ValueError, match = f'Wrong data format is provided in {save_name}. Only ".gexf" format is supported'):
+            self.combined_dataset.export_ppis_for_gephi(pcd, self.chimerax_folder, save_name)
 
-#     def test_positive_export_aais_for_gephi(self):
-#         pcd_monomer = ProteinChainDataset(os.path.join(self.CWD, "monomer.pcd"))
-#         pcd_dimer = ProteinChainDataset(os.path.join(self.CWD, "dimer.pcd"))
+    def test_positive_export_aais_for_gephi(self):
+        monomer_content = Path.read_to_string(os.path.join(self.CWD, "monomer.pcd"))
+        dimer_content = Path.read_to_string(os.path.join(self.CWD, "dimer.pcd"))
         
-#         save_monomer = "aais_for_gephi_test_monomer.gexf"
-#         save_dimer = "aais_for_gephi_test_dimer.gexf"
-
-#         self.combined_dataset.export_aais_for_gephi(pcd_monomer, self.chimerax_folder, save_monomer)
-#         self.combined_dataset.export_aais_for_gephi(pcd_dimer, self.chimerax_folder, save_dimer)
-
-#         monomer_sample_path = os.path.join(self.chimerax_folder, save_monomer)
-#         monomer_reference_path = os.path.join(self.chimerax_folder, "aais_for_gephi_reference_monomer.gexf")
-
-#         dimer_sample_path = os.path.join(self.chimerax_folder, save_dimer)
-#         dimer_reference_path = os.path.join(self.chimerax_folder, "aais_for_gephi_reference_dimer.gexf")
-
-#         monomer_sample = self._read_file(monomer_sample_path, True)
-#         monomer_reference = self._read_file(monomer_reference_path)
-
-#         dimer_sample = self._read_file(dimer_sample_path, True)
-#         dimer_reference = self._read_file(dimer_reference_path)
-
-#         assert (
-#            dimer_sample == dimer_reference and
-#            monomer_sample == monomer_reference
-#         )
-
-#     def test_exception_export_aais_for_gephi(self):
-#         pcd = ProteinChainDataset(os.path.join(self.CWD, "dimer.pcd"))
-#         save_name = "ppis_for_gephi_test.PDF"
+        pcd_monomer = ProteinChainDataset(monomer_content)
+        pcd_dimer = ProteinChainDataset(dimer_content)
         
-#         with pytest.raises(ValueError, match = f'ERROR! Wrong file extension in {save_name}. Only ".gexf" format is supported'):
-#             self.combined_dataset.export_aais_for_gephi(pcd, self.chimerax_folder, save_name)
+        save_monomer = "aais_for_gephi_test_monomer.gexf"
+        save_dimer = "aais_for_gephi_test_dimer.gexf"
+        
+        self.combined_dataset.export_aais_for_gephi(pcd_monomer, self.gephi_folder, save_monomer)
+        self.combined_dataset.export_aais_for_gephi(pcd_dimer, self.gephi_folder, save_dimer)
 
-#     def test_positive_unique_elements(self):
-#         first_dataset = self.folder_content[0]
-#         last_dataset = self.folder_content[-1]
+        monomer_sample_path = os.path.join(self.gephi_folder, save_monomer)
+        monomer_reference_path = os.path.join(self.gephi_folder, "aais_for_gephi_reference_monomer.gexf")
 
-#         unique_first, unique_last = CrossLinkDataset.unique_elements(first_dataset, last_dataset)
-#         common_first, common_last = CrossLinkDataset.common_elements(first_dataset, last_dataset)
-#         assert (
-#             len(unique_first) + len(common_first) == len(first_dataset) and
-#             len(unique_last) + len(common_last) == len(last_dataset)
-#         )
+        dimer_sample_path = os.path.join(self.gephi_folder, save_dimer)
+        dimer_reference_path = os.path.join(self.gephi_folder, "aais_for_gephi_reference_dimer.gexf")
 
-#     def test_negative_unique_elements(self):
-#         len_before = len(self.combined_dataset)
+        monomer_sample = self._read_file(monomer_sample_path, True)
+        monomer_reference = self._read_file(monomer_reference_path)
 
-#         reference_dataset = copy.deepcopy(self.combined_dataset)
-#         reference_dataset.remove_intraprotein_crosslinks()
-#         reference_dataset.remove_interprotein_crosslinks()
-#         reference_dataset.remove_homotypic_crosslinks()
+        dimer_sample = self._read_file(dimer_sample_path, True)
+        dimer_reference = self._read_file(dimer_reference_path)
+
+        assert (
+           dimer_sample == dimer_reference and
+           monomer_sample == monomer_reference
+        )
+
+    def test_exception_export_aais_for_gephi(self):
+        pcd_content = Path.read_to_string(os.path.join(self.CWD, "dimer.pcd"))
+        pcd = ProteinChainDataset(pcd_content)
+        save_name = "ppis_for_gephi_test.PDF"
+        
+        with pytest.raises(ValueError, match = f'Wrong data format is provided in {save_name}. Only ".gexf" format is supported'):
+            self.combined_dataset.export_aais_for_gephi(pcd, self.gephi_folder, save_name)
+
+    def test_positive_unique_elements(self):
+        first_dataset = self.folder_content[0]
+        last_dataset = self.folder_content[-1]
+
+        unique_first, unique_last = CrossLinkDataset.unique_elements(first_dataset, last_dataset)
+        common_first, common_last = CrossLinkDataset.common_elements(first_dataset, last_dataset)
+        assert (
+            len(unique_first) + len(common_first) == len(first_dataset) and
+            len(unique_last) + len(common_last) == len(last_dataset)
+        )
+
+    def test_negative_unique_elements(self):
+        len_before = len(self.combined_dataset)
+
+        reference_dataset = copy.deepcopy(self.combined_dataset)
+        reference_dataset.remove_intraprotein_crosslinks()
+        reference_dataset.remove_interprotein_crosslinks()
+        reference_dataset.remove_homotypic_crosslinks()
     
-#         unique_combined, unique_reference = CrossLinkDataset.unique_elements(self.combined_dataset, reference_dataset)
-#         len_after = len(self.combined_dataset)
-#         assert (
-#             len_before == len_after and
-#             len(unique_reference) == 0 and
-#             len(unique_combined) == len_before
-#         )
+        unique_combined, unique_reference = CrossLinkDataset.unique_elements(self.combined_dataset, reference_dataset)
+        len_after = len(self.combined_dataset)
+        assert (
+            len_before == len_after and
+            len(unique_reference) == 0 and
+            len(unique_combined) == len_before
+        )
 
-#     def test_positive_common_elements(self):
-#         first_dataset = self.folder_content[0]
-#         last_dataset = self.folder_content[-1]
+    def test_positive_common_elements(self):
+        first_dataset = self.folder_content[0]
+        last_dataset = self.folder_content[-1]
 
-#         common_first, common_last = CrossLinkDataset.common_elements(first_dataset, last_dataset)
+        common_first, common_last = CrossLinkDataset.common_elements(first_dataset, last_dataset)
 
-#         for xl in common_first:
-#             if xl not in common_last:
-#                 raise ValueError("Common elements are not the same")
+        for xl in common_first:
+            if xl not in common_last:
+                raise ValueError("Common elements are not the same")
 
-#         assert len(common_first) == len(common_last)
+        assert len(common_first) == len(common_last)
 
-#     def test_negative_common_elements(self):
-#         first_dataset = self.folder_content[0]
-#         last_dataset = self.folder_content[-1]
+    def test_negative_common_elements(self):
+        first_dataset = self.folder_content[0]
+        last_dataset = self.folder_content[-1]
 
-#         last_dataset.remove_intraprotein_crosslinks()
-#         last_dataset.remove_interprotein_crosslinks()
-#         last_dataset.remove_homotypic_crosslinks()
+        last_dataset.remove_intraprotein_crosslinks()
+        last_dataset.remove_interprotein_crosslinks()
+        last_dataset.remove_homotypic_crosslinks()
 
-#         common_first, common_last = CrossLinkDataset.common_elements(first_dataset, last_dataset)
-#         for xl in common_first:
-#             if xl not in first_dataset:
-#                 raise ValueError("Common elements are not the same")
+        common_first, common_last = CrossLinkDataset.common_elements(first_dataset, last_dataset)
+        for xl in common_first:
+            if xl not in first_dataset:
+                raise ValueError("Common elements are not the same")
 
-#         assert len(common_last) == 0 and len(common_first) == 0
+        assert len(common_last) == 0 and len(common_first) == 0
 
-#     def test_positive_combine_datasets(self):
-#         first_dataset = self.folder_content[0]
-#         last_dataset = self.folder_content[-1]
+    def test_positive_combine_datasets(self):
+        first_dataset = self.folder_content[0]
+        last_dataset = self.folder_content[-1]
 
-#         combined_dataset = CrossLinkDataset.combine_datasets([first_dataset, last_dataset])
-#         for xl in combined_dataset:
-#             if xl in first_dataset or xl in last_dataset:
-#                 continue
-#             else:
-#                 raise ValueError("Combined elements are not the same")
+        combined_dataset = first_dataset + last_dataset
+        for xl in combined_dataset:
+            if xl in first_dataset or xl in last_dataset:
+                continue
+            else:
+                raise ValueError("Combined elements are not the same")
 
-#         assert len(combined_dataset) == 339 and len(combined_dataset) == len(first_dataset) + len(last_dataset)
-
-#     def test_negative_combine_datasets(self):
-#         first_dataset = self.folder_content[0]
-#         last_dataset = self.folder_content[-1]
-
-#         last_dataset.remove_intraprotein_crosslinks()
-#         last_dataset.remove_interprotein_crosslinks()
-#         last_dataset.remove_homotypic_crosslinks()
-
-#         combined_dataset = CrossLinkDataset.combine_datasets([first_dataset, last_dataset])
-#         for xl in combined_dataset:
-#             if xl not in first_dataset:
-#                 raise ValueError("Combined elements are not the same")
-
-#         assert len(combined_dataset) == len(first_dataset)
+        assert len(combined_dataset) == 339 and len(combined_dataset) == len(first_dataset) + len(last_dataset)
 
 class TestFastaEntity:
     @pytest.fixture(autouse=True)
@@ -389,82 +379,91 @@ class TestFastaEntity:
             fasta = FastaEntity(header, sequence, wrong_format, remove_parenthesis)
 
 
-# class TestFastaDataset:
-#     @pytest.fixture(autouse=True)
-#     def setup(self):
-#         # Current Working Directory
-#         self.CWD = os.path.join(os.getcwd(), "tests", "test_data", "fasta")
-#         # Test Data Folder
-#         TDF = os.path.join(os.getcwd(), "tests", "test_data", "zhrm")
+class TestFastaDataset:
+    def _read_all(self, path_list: List[str]) -> str:
+        content = ''
+        for i in path_list:
+            content += Path.read_to_string(i)
+        return content
 
-#         self.fasta_files = Path.list_given_type_files(self.CWD, ".fasta")
-#         self.fasta_dataset = FastaDataset(self.fasta_files, "Custom", False)
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        # Current Working Directory
+        self.CWD = os.path.join(os.getcwd(), "tests", "files", "data", "fasta")
+        # Test Data Folder
+        TDF = os.path.join(os.getcwd(), "tests",  "files", "data", "merox")
 
-#         zhrm_folder_path = Path.list_given_type_files(TDF, '.zhrm')
-#         folder_content = DatasetUtil.read_all_merox_files(zhrm_folder_path, 'DSBU')
-#         self.combined_replicas = DatasetUtil.combine_all_datasets(folder_content)
+        fasta_files = Path.list_given_type_files(self.CWD, "fasta")
+        self.fasta_content = self._read_all(fasta_files)
+        self.fasta_dataset = FastaDataset(self.fasta_content, "Custom", False)
 
-#         self.fas_files = Path.list_given_type_files(self.CWD, ".fas")
-#         self.fas_dataset = FastaDataset(self.fas_files, "Uniprot")
+        zhrm_folder_path = Path.list_given_type_files(TDF, 'zhrm')
+        folder_content = MeroX.load_data(zhrm_folder_path, 'DSBU')
+        self.combined_replicas = CrossLink.combine_all(folder_content)
 
-#     def test_positive_constructor(self):
-#         fasta_dataset = FastaDataset(self.fasta_files, "Custom")
-#         assert len(fasta_dataset) == 3
+        fas_files = Path.list_given_type_files(self.CWD, "fas")
+        self.fas_content = self._read_all(fas_files)
+        self.fas_dataset = FastaDataset(self.fas_content, "Uniprot")
 
-#     def test_nonexistent_format_exception_constructor(self):
-#         with pytest.raises(ValueError, match = "ERROR! Wrong FASTA format: Nonexistent"):
-#             fasta_dataset = FastaDataset(self.fasta_files, "Nonexistent")
+    def test_positive_constructor(self):
+        fasta_dataset = FastaDataset(self.fasta_content, "Custom")
+        assert len(fasta_dataset) == 3
 
-#     def test_wrong_format_exception_constructor(self):
-#         with pytest.raises(ValueError, match = "ERROR! Wrong FASTA format: Uniprot"):
-#             # Custom format is expected
-#             fasta_dataset = FastaDataset(self.fasta_files, "Uniprot")
+    def test_nonexistent_format_exception_constructor(self):
+        with pytest.raises(ValueError, match = "ERROR! Wrong FASTA format: Nonexistent"):
+            fasta_dataset = FastaDataset(self.fasta_content, "Nonexistent")
 
-#     def test_positive_filter_by_crosslinks(self):
-#         fasta_dataset = FastaDataset(self.fasta_files, "Custom", False)
-#         fasta_dataset.filter_by_crosslinks(self.combined_replicas)
-#         assert len(fasta_dataset) == 2
+    def test_wrong_format_exception_constructor(self):
+        with pytest.raises(ValueError, match = "ERROR! Wrong FASTA format: Uniprot"):
+            # Custom format is expected
+            fasta_dataset = FastaDataset(self.fasta_content, "Uniprot")
 
-#     def test_negative_filter_by_crosslinks(self):
-#         self.combined_replicas.filter_by_score(min_score = sys.maxsize - 1, 
-#                                           max_score = sys.maxsize)
+    def test_positive_filter_by_crosslinks(self):
+        fasta_dataset = FastaDataset(self.fasta_content, "Custom", False)
+        fasta_dataset.filter_by_crosslinks(self.combined_replicas)
+        assert len(fasta_dataset) == 2
 
-#         self.fasta_dataset.filter_by_crosslinks(self.combined_replicas)
-#         assert len(self.fasta_dataset) == 0
+    def test_negative_filter_by_crosslinks(self):
+        self.combined_replicas.filter_by_score(min_score = sys.maxsize - 1, 
+                                          max_score = sys.maxsize)
 
-#     def test_positive_find_gene_by_fasta_header(self):
-#         header = r'>sp|P02358|RS6_ECOLI Small ribosomal subunit protein bS6 OS=Escherichia coli (strain K12) OX=83333 GN=rpsF PE=1 SV=1'
-#         fasta_match = self.fas_dataset.find_gene_by_fasta_header(header)
-#         expected_match = 'rpsF'
-#         assert fasta_match == expected_match
+        self.fasta_dataset.filter_by_crosslinks(self.combined_replicas)
+        assert len(self.fasta_dataset) == 0
 
-#     def test_negative_find_gene_by_fasta_header(self):
-#         header = r'None'
-#         fasta_match = self.fas_dataset.find_gene_by_fasta_header(header)
-#         assert fasta_match == None
+    def test_positive_find_gene_by_fasta_header(self):
+        header = r'>sp|P02358|RS6_ECOLI Small ribosomal subunit protein bS6 OS=Escherichia coli (strain K12) OX=83333 GN=rpsF PE=1 SV=1'
+        fasta_match = self.fas_dataset.find_gene_by_fasta_header(header)
+        expected_match = 'rpsF'
+        assert fasta_match == expected_match
 
-#     def test_positive_remove_parenthesis_argument_constructor(self):
-#         fas_dataset = FastaDataset(self.fas_files, "Uniprot", True)
-#         header = r'>sp|P02358|RS6_ECOLI Small ribosomal subunit protein bS6 OS=Escherichia coli strain K12 OX=83333 GN=rpsF PE=1 SV=1'
-#         fasta_match = fas_dataset.find_gene_by_fasta_header(header)
-#         expected_match = 'rpsF'
-#         assert fasta_match == expected_match
+    def test_negative_find_gene_by_fasta_header(self):
+        header = r'None'
+        fasta_match = self.fas_dataset.find_gene_by_fasta_header(header)
+        assert fasta_match == None
 
-#     def test_save(self):
-#         self.fasta_dataset.filter_by_crosslinks(self.combined_replicas)
+    def test_positive_remove_parenthesis_argument_constructor(self):
+        fas_dataset = FastaDataset(self.fas_content, "Uniprot", True)
+        header = r'>sp|P02358|RS6_ECOLI Small ribosomal subunit protein bS6 OS=Escherichia coli strain K12 OX=83333 GN=rpsF PE=1 SV=1'
+        fasta_match = fas_dataset.find_gene_by_fasta_header(header)
+        expected_match = 'rpsF'
+        assert fasta_match == expected_match
 
-#         saved_fasta = os.path.join(self.CWD, "test.fasta")
-#         if os.path.exists(saved_fasta):
-#             raise FileExistsError("FastaEntity test file should not exist")
+    def test_save(self):
+        filted_dataset = self.fasta_dataset.filter_by_crosslinks(self.combined_replicas)
 
-#         self.fasta_dataset.save(self.CWD, "test.fasta")
+        saved_fasta = os.path.join(self.CWD, "test.fasta")
+        if os.path.exists(saved_fasta):
+            raise FileExistsError("FastaEntity test file should not exist")
 
-#         if not os.path.exists(saved_fasta):
-#             raise FileExistsError("FastaEntity test file should exists")
+        filted_dataset.save(self.CWD, "test.fasta")
 
-#         saved_fasta_dataset = FastaDataset([saved_fasta], "Custom", False)
-#         os.remove(saved_fasta)
-#         assert str(saved_fasta_dataset) == str(self.fasta_dataset)
+        if not os.path.exists(saved_fasta):
+            raise FileExistsError("FastaEntity test file should exists")
+
+        content = Path.read_to_string(saved_fasta)
+        os.remove(saved_fasta)
+        saved_fasta_content = FastaDataset(content, "Custom", False)
+        assert str(saved_fasta_content) == str(filted_dataset)
 
 
 class TestDomainEntity:
@@ -495,21 +494,32 @@ class TestDomainEntity:
         )
 
 class TestDomainDataset:
+    def _read_all(self, path_list: List[str]) -> str:
+        content = ''
+        for i in path_list:
+            content += Path.read_to_string(i)
+        return content
+
     @pytest.fixture(autouse=True)
     def setup(self):
         # Current Working Directory
-        self.CWD = os.path.join(os.getcwd(), "tests", "test_data", "circos_test")
+        self.CWD = os.path.join(os.getcwd(), "tests", "files", "data", "circos_test")
         # Domain Files Directory
-        self.DFD = os.path.join(os.getcwd(), "tests", "test_data", "dmn")
+        self.DFD = os.path.join(os.getcwd(), "tests", "files", "data", "dmn")
 
         domain_path = Path.list_given_type_files(self.DFD, '.dmn')
-        self.domains = DomainDataset(domain_path)
+        domain_content = self._read_all(domain_path)
+        self.domains = DomainDataset(domain_content)
 
-    # def test_filter_by_fasta(self):
-    #     fasta_path = os.path.join(os.getcwd(), "tests", "test_data", "fasta", "fasta_1.fasta")
-    #     fasta_dataset = FastaDataset([fasta_path], "Custom")
+    def test_constructor(self):
+        assert len(self.domains) == 19
 
-    #     len_before = len(self.domains)
-    #     self.domains.filter_by_fasta(fasta_dataset)
-    #     len_after = len(self.domains)
-    #     assert len_before == 19 and len_after == 10
+    def test_filter_by_fasta(self):
+        fasta_path = os.path.join(os.getcwd(), "tests", "files", "data", "fasta", "fasta_1.fasta")
+        fasta_content = Path.read_to_string(fasta_path)
+        fasta_dataset = FastaDataset(fasta_content, "Custom")
+
+        len_before = len(self.domains)
+        self.domains.filter_by_fasta(fasta_dataset)
+        len_after = len(self.domains)
+        assert len_before == 19 and len_after == 10

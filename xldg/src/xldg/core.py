@@ -19,9 +19,9 @@ class ProteinChainDataset:
             splited_line = line.strip().split(",")
 
             if len(splited_line) < 2:
-                raise ValueError("Wrong data format in provided input")
+                raise ValueError(f"Wrong data format in provided input {pcd_data}")
 
-            self.pcds[splited_line[0]] = splited_line[1:]
+            self.pcds[splited_line[0]] = [item.replace(" ", "") for item in splited_line[1:]]
 
 
     def __len__(self):
@@ -121,6 +121,111 @@ class CrossLinkEntity:
         return self.str_info
 
 
+@dataclass
+class Atom:
+    number: int
+    residue: str  # Residue identifier (number + insertion code if present)
+    type: str     # (e.g., 'N', 'CA')
+    chain: str    
+    x: float
+    y: float
+    z: float
+
+class ProteinStructureDataset:
+    def __init__(self, file_path: str, format: str):
+        self.file_path = file_path
+        self.atoms: List[Atom] = []
+        content = self._read_file()
+        if format == '.pdb':
+            self._parse_pdb(content)
+        elif format == '.cif':
+            self._parse_cif(content)
+        else:
+            raise ValueError("Unsupported file format. Only .pdb and .cif are supported.")
+
+    def _read_file(self) -> str:
+        with open(self.file_path, 'r') as f:
+            return f.read()
+
+    def _parse_pdb(self, content: str):
+        for line in content.split('\n'):
+            if line.startswith(('ATOM  ', 'HETATM')):
+                try:
+                    # Extract fields using fixed column positions
+                    atom_number = int(line[6:11].strip())
+                    atom_type = line[12:16].strip()
+                    residue_name = line[17:20].strip()
+                    chain = line[21].strip()
+                    residue_number = line[22:26].strip()  # Includes insertion code
+                    x = float(line[30:38].strip())
+                    y = float(line[38:46].strip())
+                    z = float(line[46:54].strip())
+                    self.atoms.append(Atom(
+                        number=atom_number,
+                        residue=residue_number,
+                        type=atom_type,
+                        chain=chain,
+                        x=x,
+                        y=y,
+                        z=z
+                    ))
+                except (ValueError, IndexError):
+                    continue  # Skip invalid lines
+
+    def _parse_cif(self, content: str):
+        lines = content.split('\n')
+        in_atom_site_loop = False
+        headers = []
+        id_idx = label_atom_id_idx = label_comp_id_idx = -1
+        label_asym_id_idx = label_seq_id_idx = cartn_x_idx = cartn_y_idx = cartn_z_idx = -1
+
+        for line in lines:
+            line = line.strip()
+            if line.startswith('loop_'):
+                headers = []
+                in_atom_site_loop = False
+            elif line.startswith('_atom_site.'):
+                header = line.split('.', 1)[1]
+                headers.append(header)
+                # Map header fields to indices
+                if header == 'id': id_idx = len(headers)-1
+                elif header == 'label_atom_id': label_atom_id_idx = len(headers)-1
+                elif header == 'label_comp_id': label_comp_id_idx = len(headers)-1
+                elif header == 'label_asym_id': label_asym_id_idx = len(headers)-1
+                elif header == 'label_seq_id': label_seq_id_idx = len(headers)-1
+                elif header == 'Cartn_x': cartn_x_idx = len(headers)-1
+                elif header == 'Cartn_y': cartn_y_idx = len(headers)-1
+                elif header == 'Cartn_z': cartn_z_idx = len(headers)-1
+            elif headers and not line.startswith('_'):
+                in_atom_site_loop = True
+            else:
+                in_atom_site_loop = False
+
+            if in_atom_site_loop and line and not line.startswith(('#', 'loop_')):
+                parts = line.split()
+                try:
+                    atom = Atom(
+                        number = int(parts[id_idx]),
+                        residue = parts[label_seq_id_idx] if label_seq_id_idx != -1 else '?',
+                        type = parts[label_atom_id_idx],
+                        chain = parts[label_asym_id_idx],
+                        x = float(parts[cartn_x_idx]),
+                        y = float(parts[cartn_y_idx]),
+                        z = float(parts[cartn_z_idx])
+                    )
+                    self.atoms.append(atom)
+                except (IndexError, ValueError):
+                    continue 
+
+    def predict_crosslinks(self, residues_1: str, residues_2: str, 
+                          min_length: float, max_length: float) -> 'CrossLinkDataset':
+        # Implementation not shown for brevity
+        pass
+
+    def __iter__(self):
+        return iter(self.atoms)
+
+
 class CrossLinkDataset:
     def __init__(self, xls: List['CrossLinkEntity']):
         self.xls = xls
@@ -165,7 +270,7 @@ class CrossLinkDataset:
     def __len__(self):
         return self.size
     
-    def filter_by_score(self, min_score: int = 0, max_score: int = sys.maxsize):
+    def filter_by_score(self, min_score: int = 0, max_score: int = sys.maxsize) -> 'CrossLinkDataset':
         filtered_list = []
 
         for xl in self.xls:
@@ -182,8 +287,12 @@ class CrossLinkDataset:
         self.xls = filtered_list
         self.size = len(self.xls)
         self.xls_site_count = filterered_xls_site_count
+        return self
 
-    def filter_by_replica(self, min_rep: int = 1, max_rep: int = sys.maxsize):
+    def filter_by_replica(self, min_rep: int = 1, max_rep: int = sys.maxsize) -> 'CrossLinkDataset':
+        if min_rep > max_rep:
+            raise ValueError('CircosConfig max_rep cannot be smaller than min_rep')
+
         filtered_xls_site_count = {}
         filtered_xls = []
 
@@ -197,8 +306,9 @@ class CrossLinkDataset:
         self.xls_site_count = filtered_xls_site_count
         self.xls = filtered_xls
         self.size = len(self.xls)
+        return self
 
-    def remove_interprotein_crosslinks(self):
+    def remove_interprotein_crosslinks(self) -> 'CrossLinkDataset':
         filtered_xls = []
         for xl in self.xls:
             if xl.is_homotypical:
@@ -208,8 +318,9 @@ class CrossLinkDataset:
                 filtered_xls.append(xl)
 
         self._update_xls_data(filtered_xls)
+        return self
 
-    def remove_intraprotein_crosslinks(self):
+    def remove_intraprotein_crosslinks(self) -> 'CrossLinkDataset':
         filtered_xls = []
         for xl in self.xls:
             if xl.is_homotypical:
@@ -219,14 +330,16 @@ class CrossLinkDataset:
                 filtered_xls.append(xl)
 
         self._update_xls_data(filtered_xls)
+        return self
 
-    def remove_homotypic_crosslinks(self):
+    def remove_homotypic_crosslinks(self) -> 'CrossLinkDataset':
         filtered_xls = []
         for xl in self.xls:
             if xl.is_homotypical is False:
                 filtered_xls.append(xl)
 
         self._update_xls_data(filtered_xls)
+        return self
 
     def _update_xls_data(self, xls: List['CrossLinkEntity']) -> None:
         filtered_xls_site_count = {}
@@ -239,9 +352,10 @@ class CrossLinkDataset:
         self.size = len(self.xls)
         self.xls_site_count = filtered_xls_site_count
 
-    def blank_crosslink_counter(self) -> None:
+    def blank_crosslink_counter(self)  -> 'CrossLinkDataset':
         for key in self.xls_site_count.keys():
             self.xls_site_count[key] = 1  
+        return self
         
     def _quantify_elements(self, elements: List['CrossLinkEntity']) -> Dict['CrossLinkEntity', int]:
         element_counts = {}
@@ -309,7 +423,7 @@ class CrossLinkDataset:
                     f"{xl.is_homotypical}{separator}{xl.score}\n"
                 )
 
-    def to_chimerax_pseudobonds(
+    def export_for_chimerax(
         self, 
         pcd: ProteinChainDataset, 
         folder_path: str, 
@@ -319,8 +433,9 @@ class CrossLinkDataset:
         max_distance: float = sys.maxsize,
         diameter: float = 0.2, 
         dashes: int = 1,
-        color_valid_distance: str = "48cae4", #Sky Blue
+        color_valid_distance: str = "48cae4", # Sky Blue
         color_invalid_outsider: str = "#d62828", # Red
+        protein: ProteinStructureDataset = None
     ) -> None:
 
         os.makedirs(folder_path, exist_ok=True)
@@ -373,9 +488,9 @@ class CrossLinkDataset:
         self, 
         pcd: ProteinChainDataset, 
         folder_path: str, 
-        file_name: str,
-        blank_counter: bool = False
+        file_name: str
     ) -> None:
+
         save_path = self._validate_gephi_format(folder_path, file_name)
         node_buffer = dict()
         edge_buffer = dict()
@@ -394,19 +509,15 @@ class CrossLinkDataset:
                         pair = tuple(sorted((chain1, chain2)))
                         edge_buffer[pair] = edge_buffer.get(pair, 0) + 1
     
-        if blank_counter:
-            edge_buffer = {k: 1 for k in edge_buffer}
-    
         self._create_gexf(save_path, node_buffer, edge_buffer)
 
     def export_aais_for_gephi(
         self, 
         pcd: ProteinChainDataset, 
         folder_path: str, 
-        file_name: str,
-        blank_counter: bool = False  
+        file_name: str 
     ) -> None:
-        CrossLinkEntitys = copy.deepcopy(CrossLinkEntitys)
+
         save_path = self._validate_gephi_format(folder_path, file_name)
         node_buffer = dict()
         edge_buffer = dict()
@@ -477,7 +588,7 @@ class CrossLinkDataset:
         file_extension = os.path.splitext(file_name)[1]
         lower_extension = file_extension.lower()
         if lower_extension != ".gexf":
-            raise ValueError(f'ERROR! Wrong file extension in {file_name}. Only ".gexf" format is supported')
+            raise ValueError(f'Wrong data format is provided in {file_name}. Only ".gexf" format is supported')
         os.makedirs(folder_name, exist_ok=True)
         return os.path.join(folder_name, file_name)
 
@@ -548,6 +659,7 @@ class CrossLinkDataset:
         common_dataset2.xls_site_count = {k: count2[k] for k in count2 if k in common_elements}
         
         return common_dataset1, common_dataset2
+
 
 class FastaEntity:
     def __init__(self, header: str, sequence: str, fasta_format: str, remove_parenthesis: bool = False):
@@ -643,14 +755,22 @@ class FastaDataset:
 
             if line.startswith(">"):
                 if current_header:
-                    entries.append(FastaEntity(current_header, "".join(current_sequence), self.fasta_format))
+                    header = ">" + current_header
+                    if self.remove_parenthesis:
+                        header = header.replace(')', '').replace('(', '')
+
+                    entries.append(FastaEntity(header, "".join(current_sequence), self.fasta_format))
                 current_header = line[1:].strip()
                 current_sequence = []
             else:
                 current_sequence.append(line)
 
         if current_header:
-            entries.append(FastaEntity(current_header, "".join(current_sequence), self.fasta_format))
+            header = ">" + current_header
+            if self.remove_parenthesis:
+                        header = header.replace(')', '').replace('(', '')
+
+            entries.append(FastaEntity(header, "".join(current_sequence), self.fasta_format))
 
         return entries
     
@@ -672,7 +792,7 @@ class FastaDataset:
     def __str__(self) -> str:
         return "\n".join(str(fasta) for fasta in self.entities)
         
-    def filter_by_crosslinks(self, merox_xls: 'CrossLinkDataset') -> None:
+    def filter_by_crosslinks(self, merox_xls: 'CrossLinkDataset') -> 'FastaDataset':
         filtered_entities = set()
         
         for fasta in self.entities:
@@ -684,6 +804,7 @@ class FastaDataset:
         # Unifies sector plotting order on a final figure
         self.entities = sorted(list(filtered_entities)) 
         self.size = len(self.entities)
+        return self
 
     def find_gene_by_fasta_header(self, header: str) -> str:
         for fasta in self.entities:
@@ -722,28 +843,24 @@ class DomainEntity:
 
 
 class DomainDataset:
-    def __init__(self, domain_files_paths_list: List[str]):
-        self.domains = self._extract_all_domain_content_from_folder(domain_files_paths_list)
-        self._index = 0  # Initialize an index for iteration
+    def __init__(self, domain_content_list: List[str]):
+        self.domains = self._extract_all_domain_content(domain_content_list)
+        self._index = 0 
         self._size = len(self.domains)
-
-    def _extract_all_domain_content_from_folder(self, domain_files_paths_list: List[str]) -> List['DomainEntity']:
+    
+    def _extract_all_domain_content(self, domain_content_list: List[str]) -> List['DomainEntity']:
         domains = []
         
-        for file_path in domain_files_paths_list:
-            # Read content of all files
+        for content in domain_content_list.split('\n'):
             try:
-                with open(file_path, 'r') as file:
-                    for line in file:
-                        # Ignore comments and empty lines
-                        if line[0] == '#' or not line.strip():
-                            continue
+                # Process each line in the content string
+                for line in content.splitlines():
+                    # Ignore comments and empty lines
+                    if line and line[0] != '#' and line.strip():
                         domains.append(DomainEntity(line))
-            except FileNotFoundError:
-                print(f'Domain_Dataset error: File at {file_path} was not found.')
             except Exception as e:
                 print(f'Domain_Dataset error: {e}')
-
+        
         return domains
 
     def __len__(self):
@@ -761,7 +878,7 @@ class DomainDataset:
         else:
             raise StopIteration
 
-    def filter_by_fasta(self, FastaDataset: 'FastaDataset') -> None:
+    def filter_by_fasta(self, FastaDataset: 'FastaDataset') -> 'DomainDataset':
         filtered_domains = []
         for domain in self.domains:
             for fasta in FastaDataset:
@@ -770,114 +887,6 @@ class DomainDataset:
                     break
 
         self.domains = filtered_domains
+        return self
 
-
-@dataclass
-class Atom:
-    number: int
-    residue: str  # Residue identifier (number + insertion code if present)
-    type: str     # (e.g., 'N', 'CA')
-    chain: str    
-    x: float
-    y: float
-    z: float
-
-class ProteinStructureDataset:
-    def __init__(self, file_path: str, format: str):
-        self.file_path = file_path
-        self.atoms: List[Atom] = []
-        content = self._read_file()
-        if format == '.pdb':
-            self._parse_pdb(content)
-        elif format == '.cif':
-            self._parse_cif(content)
-        else:
-            raise ValueError("Unsupported file format. Only .pdb and .cif are supported.")
-
-    def _read_file(self) -> str:
-        with open(self.file_path, 'r') as f:
-            return f.read()
-
-    def _parse_pdb(self, content: str):
-        for line in content.split('\n'):
-            if line.startswith(('ATOM  ', 'HETATM')):
-                try:
-                    # Extract fields using fixed column positions
-                    atom_number = int(line[6:11].strip())
-                    atom_type = line[12:16].strip()
-                    residue_name = line[17:20].strip()
-                    chain = line[21].strip()
-                    residue_number = line[22:26].strip()  # Includes insertion code
-                    x = float(line[30:38].strip())
-                    y = float(line[38:46].strip())
-                    z = float(line[46:54].strip())
-                    self.atoms.append(Atom(
-                        number=atom_number,
-                        residue=residue_number,
-                        type=atom_type,
-                        chain=chain,
-                        x=x,
-                        y=y,
-                        z=z
-                    ))
-                except (ValueError, IndexError):
-                    continue  # Skip invalid lines
-
-    def _parse_cif(self, content: str):
-        lines = content.split('\n')
-        in_atom_site_loop = False
-        headers = []
-        id_idx = label_atom_id_idx = label_comp_id_idx = -1
-        label_asym_id_idx = label_seq_id_idx = cartn_x_idx = cartn_y_idx = cartn_z_idx = -1
-
-        for line in lines:
-            line = line.strip()
-            if line.startswith('loop_'):
-                headers = []
-                in_atom_site_loop = False
-            elif line.startswith('_atom_site.'):
-                header = line.split('.', 1)[1]
-                headers.append(header)
-                # Map header fields to indices
-                if header == 'id': id_idx = len(headers)-1
-                elif header == 'label_atom_id': label_atom_id_idx = len(headers)-1
-                elif header == 'label_comp_id': label_comp_id_idx = len(headers)-1
-                elif header == 'label_asym_id': label_asym_id_idx = len(headers)-1
-                elif header == 'label_seq_id': label_seq_id_idx = len(headers)-1
-                elif header == 'Cartn_x': cartn_x_idx = len(headers)-1
-                elif header == 'Cartn_y': cartn_y_idx = len(headers)-1
-                elif header == 'Cartn_z': cartn_z_idx = len(headers)-1
-            elif headers and not line.startswith('_'):
-                in_atom_site_loop = True
-            else:
-                in_atom_site_loop = False
-
-            if in_atom_site_loop and line and not line.startswith(('#', 'loop_')):
-                parts = line.split()
-                try:
-                    atom = Atom(
-                        number=int(parts[id_idx]),
-                        residue=parts[label_seq_id_idx] if label_seq_id_idx != -1 else '?',
-                        type=parts[label_atom_id_idx],
-                        chain=parts[label_asym_id_idx],
-                        x=float(parts[cartn_x_idx]),
-                        y=float(parts[cartn_y_idx]),
-                        z=float(parts[cartn_z_idx])
-                    )
-                    self.atoms.append(atom)
-                except (IndexError, ValueError):
-                    continue 
-
-    # def predict_CrossLinkEntitys(self, residues_1: str, residues_2: str, 
-    #                       min_length: float, max_length: float) -> 'CrossLinkDataset':
-    #     # Implementation not shown for brevity
-    #     pass
-
-    def __iter__(self):
-        return iter(self.atoms)
-
-
-
-
-    
 
