@@ -1,5 +1,5 @@
 ﻿from dataclasses import dataclass
-from typing import List, Tuple, Dict, Set, Iterator, Union
+from typing import List, Tuple, Dict, Set, Iterator, Union, Optional
 import os
 import sys
 import re
@@ -44,14 +44,23 @@ class CrossLinkEntity:
         return cleaned_string
 
     def _initialize_merox_xl(self):
-        self.protein_1 = self._remove_text_in_brackets( self.protein_1).replace('  ', ' ') #Fix for a strange Merox assignment
+        self.protein_1 = self._remove_text_in_brackets(self.protein_1).replace('  ', ' ') #Fix for a strange Merox assignment
         self.from_1 = int(self.from_1)
         self.to_1 = int(self.to_1)
         self.num_site_1 = self.from_1 + int(self.site_1[1:])
-        self.protein_2 = self._remove_text_in_brackets( self.protein_2).replace('  ', ' ') #Fix for a strange Merox assignment
+        self.protein_2 = self._remove_text_in_brackets(self.protein_2).replace('  ', ' ') #Fix for a strange Merox assignment
         self.from_2 = int(self.from_2)
         self.to_2 = int(self.to_2)
         self.num_site_2 =  self.from_2 + int(self.site_2[1:])
+        self.score = int(self.score)
+
+    def _initialize_predicted_xl(self):
+        self.from_1 = int(self.from_1)
+        self.to_1 = int(self.to_1)
+        self.num_site_1 = int(self.site_1[1:])
+        self.from_2 = int(self.from_2)
+        self.to_2 = int(self.to_2)
+        self.num_site_2 = int(self.site_2[1:])
         self.score = int(self.score)
 
     def __init__(self, 
@@ -90,6 +99,8 @@ class CrossLinkEntity:
 
         if self.software == 'MeroX':
              self._initialize_merox_xl()
+        elif self.software == 'Prediction':
+            self._initialize_predicted_xl()
         else:
             raise Exception(f'{self.software} is not supported.')
 
@@ -137,21 +148,40 @@ class Atom:
                          (self.y - other.y) ** 2 + 
                          (self.z - other.z) ** 2)
 
+    def __hash__(self):
+        return hash((self.number, self.residue, self.type, self.chain))
+    
+    def __eq__(self, other):
+        if not isinstance(other, Atom):
+            return False
+        return (self.number == other.number and
+                self.residue == other.residue and
+                self.type == other.type and
+                self.chain == other.chain)
+
+    def __lt__(self, other):
+        if not isinstance(other, Atom):
+            return NotImplemented
+        return (self.number, self.residue, self.type, self.chain) < (other.number, other.residue, other.type, other.chain)
+    
+    def __gt__(self, other):
+        if not isinstance(other, Atom):
+            return NotImplemented
+        return (self.number, self.residue, self.type, self.chain) > (other.number, other.residue, other.type, other.chain)
+
+    def __str__(self):
+        return f'{self.number}\t{self.residue}\t{self.type}\t{self.chain}\t{self.x}\t{self.y}\t{self.z}\n'
+
 class ProteinStructureDataset:
-    def __init__(self, file_path: str, format: str):
-        self.file_path = file_path
+    def __init__(self, file_content: str, format: str):
         self.atoms: List[Atom] = []
-        content = self._read_file()
-        if format == '.pdb':
-            self._parse_pdb(content)
-        elif format == '.cif':
-            self._parse_cif(content)
+        if format == 'pdb':
+            self._parse_pdb(file_content)
+        elif format == 'cif':
+            self._parse_cif(file_content)
         else:
             raise ValueError("Unsupported file format. Only .pdb and .cif are supported.")
 
-    def _read_file(self) -> str:
-        with open(self.file_path, 'r') as f:
-            return f.read()
     def _three_to_one_letter_code(self, three_letter_code):
         aa_dict = {
             'ALA': 'A',  # Alanine
@@ -186,7 +216,6 @@ class ProteinStructureDataset:
             'GLX': 'Z',  # Glutamine or Glutamic acid
         }
     
-        # Handle case-insensitivity
         code = three_letter_code.upper()
     
         if code in aa_dict:
@@ -209,7 +238,7 @@ class ProteinStructureDataset:
                     z = float(line[46:54].strip())
 
                     self.atoms.append(Atom(
-                        number = residue_number,
+                        number = int(residue_number),
                         residue = self._three_to_one_letter_code(residue_name),
                         type = atom_type,
                         chain = chain,
@@ -300,7 +329,7 @@ class ProteinStructureDataset:
                     
                         # Create and add the atom
                         self.atoms.append(Atom(
-                            number = residue_number,
+                            number = int(residue_number),
                             residue = self._three_to_one_letter_code(residue_name),
                             type = atom_type,
                             chain = chain,
@@ -312,55 +341,89 @@ class ProteinStructureDataset:
                         print(f"Error parsing CIF atom entry: {e}")
             i += 1         
 
-    def predict_crosslinks(self, pcd: ProteinChainDataset, residues_1: str, residues_2: str, 
-                          min_length: float, max_length: float) -> 'CrossLinkDataset':
-        crosslinks = set()
-        res_1 = list(residues_1)
-        res_2 = list(residues_2)
-        link = None
+    def predict_crosslinks(self, 
+                           pcd: ProteinChainDataset, 
+                           residues_1: str, 
+                           residues_2: str, 
+                           min_length: float, 
+                           max_length: float, 
+                           linker: Optional[str] = None,
+                           atom_type: str = 'CA'
+                           ) -> 'CrossLinkDataset':
+   
+        filtered_atoms = list(filter(lambda atom: atom.type == atom_type, self.atoms))
+        if len(filtered_atoms) == 0:
+            raise ValueError(f'Invalid atom type {atom_type}')
+
+        def _get_all_crosslink_candidates(recidues: str) -> List['Atom']:
+            recidues = list(recidues)
+            atoms = []
+            for _, chains in pcd:
+                for chain in chains:
+                    for res in recidues:
+                        if res == '{':
+                            for atom in filtered_atoms:
+                                if atom.chain == chain and atom.type == atom_type and atom.number == 1:
+                                    atoms.append(atom)
+                                    break
+                        elif res == '}':
+                            last_atom = None
+                            counter = 0
+                            for atom in filtered_atoms:
+                                if atom.chain == chain and atom.type == atom_type and atom.number > counter:
+                                    counter = atom.number
+                                    last_atom = atom
+                            atoms.append(last_atom)
+                        else:
+                            for atom in filtered_atoms:
+                                if atom.chain == chain and atom.type == atom_type and atom.residue == res:
+                                    atoms.append(atom)
+            return atoms
+
+        atoms_1 = _get_all_crosslink_candidates(residues_1)
+        atoms_2 = _get_all_crosslink_candidates(residues_2)
+        crosslink_pairs = set()
+        
         distance = 0
-        aa_pairs = None
-        terminus_exhist = False
+        for a1 in atoms_1:
+            for a2 in atoms_2:
+                distance = a1.distance_to(a2)
+                if distance >= min_length and distance <= max_length:
+                   if a1 > a2:
+                        crosslink_pairs.add((a1, a2))
+                   else:
+                        crosslink_pairs.add((a2, a1))
+        
+        def _get_protein_by_chain(chain: str) -> str:
+            for protein, chains in pcd:
+                for ch in chains:
+                    if ch == chain:
+                        return protein
 
-        for aa1 in res_1:
-            if aa1 in '{}':
-                terminus_exhist = True
-                continue
-            for aa2 in res_2:
-                if aa2 in '{}':
-                    terminus_exhist = True
-                    continue
-                for x in self.atoms:
-                    if x.type != 'CA' or x.residue != aa1:
-                        continue
-                    for y in self.atoms:
-                        if y.type != 'CA' or y.residue != aa2:
-                            continue
-
-                        distance = x.distance_to(y)
-                        if distance <= max_length and distance >= min_length:
-                            aa_pairs = sorted([(x.chain, x.number), (y.chain, y.number)])
-                            link = CrossLinkEntity(aa_pairs[0][0], '', '', '', aa_pairs[0][1], 
-                                                   aa_pairs[1][0], '', '', '', aa_pairs[1][1], 
-                                                   '', 'Predicted', None)
-                            crosslinks.add(link)
-
-        if terminus_exhist:
-            chain_size = dict()
-            for protein, chain in pcd:
-                max_atom = 0
-                for x in self.atoms:
-                    if x.chain == chain and x.number > max_atom:
-                        max_atom = x.number
-
-                chain_size[chain] = max_atom
-                #TODO Continue here
-
-        return CrossLinkDataset(list(crosslinks))
-
+        crosslinks = []
+        for x, y in crosslink_pairs:
+            crosslinks.append(CrossLinkEntity(
+                _get_protein_by_chain(x.chain),
+                '',
+                '-1',
+                '-1',
+                x.residue + str(x.number),
+                 _get_protein_by_chain(y.chain),
+                '',
+                '-1',
+                '-1',
+                y.residue + str(y.number),
+                '-1',
+                'Prediction',
+                linker
+                ))
+        return CrossLinkDataset(crosslinks)
+        
     def __iter__(self):
         return iter(self.atoms)
 
+    def __len__(self):
+        return len(self.atoms)
 
 class CrossLinkDataset:
     def __init__(self, xls: List['CrossLinkEntity']):
@@ -368,7 +431,6 @@ class CrossLinkDataset:
         self._remove_decoy_xls()
         self.size = len(self.xls)
         self.xls_site_count = self._quantify_elements(self.xls)
-
 
     def __iter__(self):
         self._index = 0
@@ -405,7 +467,7 @@ class CrossLinkDataset:
 
     def __len__(self):
         return self.size
-    
+
     def filter_by_score(self, min_score: int = 0, max_score: int = sys.maxsize) -> 'CrossLinkDataset':
         filtered_list = []
 
@@ -564,59 +626,103 @@ class CrossLinkDataset:
         pcd: ProteinChainDataset, 
         folder_path: str, 
         file_name: str,  
-        protein_structure: str = None,
-        min_distance: float = 0,
-        max_distance: float = sys.maxsize,
         diameter: float = 0.2, 
         dashes: int = 1,
-        color_valid_distance: str = "48cae4", # Sky Blue
+        color_valid_distance: str = "#48cae4", # Sky Blue
         color_invalid_outsider: str = "#d62828", # Red
-        protein: ProteinStructureDataset = None
+        protein_structure: ProteinStructureDataset = None,
+        min_distance: float = 0,
+        max_distance: float = sys.maxsize,
+        atom_type: str = 'CA'
     ) -> None:
-
         os.makedirs(folder_path, exist_ok=True)
-        xl_frequencies: Set[int] = set(self.xls_site_count.values())
+    
+        # Only filter protein_structure if it's not None
+        filtered_protein_structure = []
+        if protein_structure is not None:
+            filtered_protein_structure = list(filter(lambda atom: atom.type == atom_type, protein_structure.atoms))
+            if len(filtered_protein_structure) == 0:
+                raise ValueError(f'Invalid atom type {atom_type}')
 
-        def _write_to_pb_file(buffer: str, filename: str):
-            print(f'Writing {len(buffer)} CrossLinkEntitys to {filename}')
+        def _write_to_pb_file(buffer: List[str], filename: str):
+            buffer = "\n".join(buffer)
             if buffer:
                 file_path = os.path.join(folder_path, filename)
                 with open(file_path, "w") as file:
                     file.write(f"; dashes = {dashes}\n; radius = {diameter}\n{buffer}")
 
+        def _clasify_crosslink(crosslink: CrossLinkEntity, valid_buffer: List[str], outliar_buffer: List[str], chain1: str, chain2: str) -> None:
+            # Create lookup dictionaries for faster access if protein_structure exists
+            if filtered_protein_structure:
+                # Convert site numbers to strings for comparison if needed
+                site1_str = str(crosslink.num_site_1)
+                site2_str = str(crosslink.num_site_2)
+            
+                # Find matching atoms for both sites
+                matching_atoms1 = [atom for atom in filtered_protein_structure if str(atom.number) == site1_str]
+                matching_atoms2 = [atom for atom in filtered_protein_structure if str(atom.number) == site2_str]
+            
+                # Check if we found matching atoms
+                if matching_atoms1 and matching_atoms2:
+                    # Calculate distance between first matching atoms
+                    distance = matching_atoms1[0].distance_to(matching_atoms2[0])
+                
+                    if distance >= min_distance and distance <= max_distance:
+                        valid_buffer.append(f"/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_valid_distance}")
+                    else:
+                        outliar_buffer.append(f"/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_invalid_outsider}")
+                else:
+                    # If atoms not found but we have structure, consider it an outlier
+                    outliar_buffer.append(f"/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_invalid_outsider}")
+            else:
+                # No protein structure to validate against, consider all valid
+                valid_buffer.append(f"/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_valid_distance}")
+
+        xl_frequencies: Set[int] = set(self.xls_site_count.values())
         for xl_frequency in xl_frequencies:
             buffer_homotypical_xl = []
             buffer_heterotypical_intra_xl = []
             buffer_heterotypical_inter_xl = []
 
+            outliers_buffer_homotypical_xl = []
+            outliers_buffer_heterotypical_intra_xl = []
+            outliers_buffer_heterotypical_inter_xl = []
+            distance = 0
+
             for key, value in self.xls_site_count.items():
                 if value != xl_frequency:
                     continue
 
-                CrossLinkEntity = self._validate_terminus_sites(key)
-                chains = pcd[CrossLinkEntity.protein_1]
-
-                if CrossLinkEntity.is_homotypical:
+                crosslink = self._validate_terminus_sites(key)
+                chains = pcd[crosslink.protein_1]             
+                if crosslink.is_homotypical:
                     for c1 in chains:
                         for c2 in chains:
                             if c1 != c2:  # Ensure unique chain pairing
-                                buffer_homotypical_xl.append(f"/{c1}:{CrossLinkEntity.num_site_1}@CA\t/{c2}:{CrossLinkEntity.num_site_2}@CA\t{color_valid_distance}")
+                                _clasify_crosslink(crosslink, buffer_homotypical_xl, outliers_buffer_homotypical_xl, c1, c2)
 
-                elif CrossLinkEntity.is_interprotein:
-                    chain1, chain2 = pcd[CrossLinkEntity.protein_1], pcd[CrossLinkEntity.protein_2]
+                elif crosslink.is_interprotein:
+                    chain1 = pcd[crosslink.protein_1]
+                    chain2 = pcd[crosslink.protein_2]
+
                     for c1 in chain1:
                         for c2 in chain2:
-                            buffer_heterotypical_inter_xl.append(f"/{c1}:{CrossLinkEntity.num_site_1}@CA\t/{c2}:{CrossLinkEntity.num_site_2}@CA\t{color_valid_distance}")
+                            _clasify_crosslink(crosslink, buffer_heterotypical_inter_xl, outliers_buffer_heterotypical_inter_xl, c1, c2)
 
                 else:  # Intraprotein heterotypical
                     for c1 in chains:
                         for c2 in chains:
-                            buffer_heterotypical_intra_xl.append(f"/{c1}:{CrossLinkEntity.num_site_1}@CA\t/{c2}:{CrossLinkEntity.num_site_2}@CA\t{color_valid_distance}")
+                            _clasify_crosslink(crosslink, buffer_heterotypical_intra_xl, outliers_buffer_heterotypical_intra_xl, c1, c2)
 
             # Writing to files
-            _write_to_pb_file("\n".join(buffer_heterotypical_inter_xl), f"{file_name}_heterotypical_interprotein_xl_{xl_frequency}_rep.pb")
-            _write_to_pb_file("\n".join(buffer_heterotypical_intra_xl), f"{file_name}_heterotypical_intraprotein_xl_{xl_frequency}_rep.pb")
-            _write_to_pb_file("\n".join(buffer_homotypical_xl), f"{file_name}_homotypical_xl_{xl_frequency}_rep.pb")
+            if protein_structure:
+                _write_to_pb_file(outliers_buffer_heterotypical_inter_xl, f"outliers_{file_name}_heterotypical_interprotein_xl_{xl_frequency}_rep.pb")
+                _write_to_pb_file(outliers_buffer_heterotypical_intra_xl, f"outliers_{file_name}_heterotypical_intraprotein_xl_{xl_frequency}_rep.pb")
+                _write_to_pb_file(outliers_buffer_homotypical_xl, f"outliers_{file_name}_homotypical_xl_{xl_frequency}_rep.pb")
+
+            _write_to_pb_file(buffer_heterotypical_inter_xl, f"{file_name}_heterotypical_interprotein_xl_{xl_frequency}_rep.pb")
+            _write_to_pb_file(buffer_heterotypical_intra_xl, f"{file_name}_heterotypical_intraprotein_xl_{xl_frequency}_rep.pb")
+            _write_to_pb_file(buffer_homotypical_xl, f"{file_name}_homotypical_xl_{xl_frequency}_rep.pb")
 
         print(f"DB files saved to {folder_path}")
 
@@ -806,14 +912,16 @@ class FastaEntity:
             self.raw_header = header.replace('(', '').replace(')', '')  # Merox also removes scopes
 
         self.raw_sequence = sequence
-
-        if fasta_format == 'Uniprot':
-            self.db_id, self.prot_gene = self._split_uniprot_fasta_header(header)
-        elif fasta_format == 'Araport11':
-            self.db_id, self.prot_gene = self._split_araport11_fasta_header(header)
-        elif fasta_format == 'Custom':
-            self.db_id, self.prot_gene = self.raw_header, self.raw_header
-        else:
+        try:
+            if fasta_format == 'Uniprot':
+                self.db_id, self.prot_gene = self._split_uniprot_fasta_header(header)
+            elif fasta_format == 'Araport11':
+                self.db_id, self.prot_gene = self._split_araport11_fasta_header(header)
+            elif fasta_format == 'Custom':
+                self.db_id, self.prot_gene = self.raw_header, self.raw_header
+            else:
+                raise Exception
+        except Exception:
             raise ValueError(f'Wrong FASTA format: {fasta_format}')
 
                 
@@ -1023,5 +1131,3 @@ class DomainDataset:
 
         self.domains = filtered_domains
         return self
-
-

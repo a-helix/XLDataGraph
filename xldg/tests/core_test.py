@@ -374,7 +374,7 @@ class TestFastaEntity:
         sequence = 'M'
         wrong_format = 'Nonexistent'
         remove_parenthesis = False
-        with pytest.raises(ValueError, match = "ERROR! Wrong FASTA format: Nonexistent"):
+        with pytest.raises(ValueError, match = "Wrong FASTA format: Nonexistent"):
             fasta = FastaEntity(header, sequence, wrong_format, remove_parenthesis)
 
     def test_wrong_format_exception_constructor_FastaEntity(self):
@@ -382,7 +382,7 @@ class TestFastaEntity:
         sequence = 'M'
         wrong_format = 'Uniprot'
         remove_parenthesis = False
-        with pytest.raises(ValueError, match = "ERROR! Wrong FASTA format: Uniprot"):
+        with pytest.raises(ValueError, match = "Wrong FASTA format: Uniprot"):
             fasta = FastaEntity(header, sequence, wrong_format, remove_parenthesis)
 
 
@@ -417,11 +417,11 @@ class TestFastaDataset:
         assert len(fasta_dataset) == 3
 
     def test_nonexistent_format_exception_constructor(self):
-        with pytest.raises(ValueError, match = "ERROR! Wrong FASTA format: Nonexistent"):
+        with pytest.raises(ValueError, match = "Wrong FASTA format: Nonexistent"):
             fasta_dataset = FastaDataset(self.fasta_content, "Nonexistent")
 
     def test_wrong_format_exception_constructor(self):
-        with pytest.raises(ValueError, match = "ERROR! Wrong FASTA format: Uniprot"):
+        with pytest.raises(ValueError, match = "Wrong FASTA format: Uniprot"):
             # Custom format is expected
             fasta_dataset = FastaDataset(self.fasta_content, "Uniprot")
 

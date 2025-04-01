@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>a9d1593d-9273-4f28-aa52-952659dd5c68</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>examples\gephi.py</StartupFile>
+    <StartupFile>examples\chimerax\chimerax_export_with_protein_structure.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -25,6 +25,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="examples\chimerax\chimerax_export_with_protein_structure.py" />
     <Compile Include="examples\circus.py" />
     <Compile Include="examples\gephi.py" />
     <Compile Include="examples\gephi_export.py" />
@@ -39,6 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="examples\" />
+    <Folder Include="examples\chimerax\" />
     <Folder Include="src\" />
     <Folder Include="src\xldg\" />
     <Folder Include="tests\" />

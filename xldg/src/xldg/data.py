@@ -319,7 +319,7 @@ class ProteinChain:
     @staticmethod
     def load_data(path: str) -> ' ProteinChainDataset':
         Path.validate_file_existence(path)
-        Path.confirm_file_format(path, '.pcd')
+        Path.confirm_file_format(path, 'pcd')
         content = Path.read_to_string(path)
         return ProteinChainDataset(content);
 
@@ -328,7 +328,7 @@ class ProteinStructure:
     @staticmethod
     def load_data(path: str) -> ' ProteinStructureDataset':
         Path.validate_file_existence(path)
-        extension = Path.confirm_file_format(path, '.pdb', '.cif')
+        extension = Path.confirm_file_format(path, 'pdb', 'cif')
         content = Path.read_to_string(path)
         return ProteinStructureDataset(content, extension);
 
