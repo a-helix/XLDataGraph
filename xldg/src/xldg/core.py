@@ -108,6 +108,8 @@ class CrossLinkEntity:
         self.is_interprotein = (self.protein_1 != self.protein_2)
         self.is_homotypical = (self.protein_1 == self.protein_2 and (self.num_site_1 == self.num_site_2 
                                                                      or self.peptide_1 == self.peptide_2))
+        if self.software == 'Prediction':
+            self.is_homotypical = self.protein_1 == self.protein_2 and self.num_site_1 == self.num_site_2
     
     def __eq__(self, other):
         return (self.protein_1 == other.protein_1 and
@@ -382,6 +384,8 @@ class ProteinStructureDataset:
 
         atoms_1 = _get_all_crosslink_candidates(residues_1)
         atoms_2 = _get_all_crosslink_candidates(residues_2)
+        print(len(atoms_1))
+        print(len(atoms_2))
         crosslink_pairs = set()
         
         distance = 0
@@ -399,6 +403,7 @@ class ProteinStructureDataset:
                 for ch in chains:
                     if ch == chain:
                         return protein
+            raise ValueError(f'Undefined protein chain {chain}')
 
         crosslinks = []
         for x, y in crosslink_pairs:
