@@ -7,6 +7,12 @@ import copy
 import math
 
 from heapq import heappush, heappop
+from dataclasses import dataclass
+from collections import defaultdict
+from itertools import product
+from concurrent.futures import ThreadPoolExecutor
+
+from heapq import heappush, heappop
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
@@ -147,6 +153,9 @@ class Node:
         return math.sqrt((self.x - other.x)**2 + 
                          (self.y - other.y)**2 + 
                          (self.z - other.z)**2)
+
+    def squared_dist_to(self, other: 'Node') -> float:
+        return (self.x - other.x)**2 + (self.y - other.y)**2 + (self.z - other.z)**2
 
 class Atom:
     def __init__(self, number: int, residue: str, type: str, chain: str, x: float, y: float, z: float):
@@ -354,112 +363,135 @@ class ProteinStructureDataset:
                         print(f"Error parsing CIF atom entry: {e}")
             i += 1
 
-    def _distance_segment_to_point(self, P: Node, Q: Node, C: Node) -> float:
-        """Calculate minimum distance between point C and line segment PQ"""
-        # Vector PQ
-        pq_x = Q.x - P.x
-        pq_y = Q.y - P.y
-        pq_z = Q.z - P.z
+    class SpatialGrid:
+        def __init__(self, cell_size: float):
+            self.cell_size = cell_size
+            self.grid = defaultdict(set)
+        
+        def _get_cell_key(self, node: Node) -> tuple[int, int, int]:
+            return (int(node.x // self.cell_size),
+                    int(node.y // self.cell_size),
+                    int(node.z // self.cell_size))
 
-        # Vector PC
-        pc_x = C.x - P.x
-        pc_y = C.y - P.y
-        pc_z = C.z - P.z
+        def add_node(self, node: Node, index: int):
+            self.grid[self._get_cell_key(node)].add(index)
+        
+        def get_nearby_indices(self, node: Node, radius: float) -> set[int]:
+            radius_cells = math.ceil(radius / self.cell_size)
+            cell = self._get_cell_key(node)
+            nearby = set()
+        
+            for dx, dy, dz in product(range(-radius_cells, radius_cells+1), repeat=3):
+                nearby_cell = (cell[0] + dx, cell[1] + dy, cell[2] + dz)
+                nearby.update(self.grid.get(nearby_cell, set()))
+            
+            return nearby
 
-        # Dot product of PC and PQ
-        dot = pc_x * pq_x + pc_y * pq_y + pc_z * pq_z
-        # Squared length of PQ
-        len_sq = pq_x**2 + pq_y**2 + pq_z**2
-
-        if len_sq == 0:  # P and Q are the same point
-            return P.distance_to(C)
-
-        # Parameter t for closest point on segment
-        t = max(0.0, min(1.0, dot / len_sq))
-
-        # Closest point coordinates
-        closest_x = P.x + t * pq_x
-        closest_y = P.y + t * pq_y
-        closest_z = P.z + t * pq_z
-
-        # Create temporary node for closest point
-        closest_node = Node(closest_x, closest_y, closest_z)
-        return closest_node.distance_to(C)
-
-    def _is_edge_valid(self, i: int, j: int, nodes: list[Node], min_distance: float) -> bool:
-        """Check if edge between nodes[i] and nodes[j] is valid"""
-        if i == j:
-            return False
-        P = nodes[i]
-        Q = nodes[j]
-        for k, C in enumerate(nodes):
-            if k in (i, j):
+    def is_segment_valid(self, args: tuple) -> tuple[int, int, float] | None:
+        a, b, nodes, grid, min_distance, i, j = args
+        min_sq = min_distance ** 2
+        dir_vec = (b.x - a.x, b.y - a.y, b.z - a.z)
+        length_sq = dir_vec[0]**2 + dir_vec[1]**2 + dir_vec[2]**2
+    
+        search_radius = min_distance + math.sqrt(length_sq)/2
+        nearby_indices = grid.get_nearby_indices(a, search_radius) | grid.get_nearby_indices(b, search_radius)
+    
+        for k in nearby_indices:
+            if k in {i, j}:
                 continue
-            if self._distance_segment_to_point(P, Q, C) < min_distance:
-                return False
-        return True
+            c = nodes[k]
+            if a.squared_dist_to(c) > (math.sqrt(length_sq) + min_distance)**2 and \
+               b.squared_dist_to(c) > (math.sqrt(length_sq) + min_distance)**2:
+                continue
+            
+            t = ((c.x - a.x)*dir_vec[0] + (c.y - a.y)*dir_vec[1] + (c.z - a.z)*dir_vec[2]) / length_sq
+            t = max(0, min(1, t))
+            closest_x = a.x + t*dir_vec[0]
+            closest_y = a.y + t*dir_vec[1]
+            closest_z = a.z + t*dir_vec[2]
+        
+            if (closest_x - c.x)**2 + (closest_y - c.y)**2 + (closest_z - c.z)**2 < min_sq:
+                return None
 
-    def _build_graph(self, nodes: list[Node], min_distance: float) -> dict[int, dict[int, float]]:
-        """Construct graph of valid connections between nodes"""
-        graph = {i: {} for i in range(len(nodes))}
+        return (i, j, math.sqrt(a.squared_dist_to(b)))
+    
+    def find_shortest_path(self, 
+                           start_idx: int, 
+                           end_idx: int, 
+                           min_distance: float, 
+                           max_workers: int = None
+                           ) -> tuple[list[int], float]:
+
+        nodes = [atom.node for atom in self.atoms]
+        # Initialize spatial grid
+        cell_size = min_distance * 2
+        grid = self.SpatialGrid(cell_size)
+        for i, node in enumerate(nodes):
+            grid.add_node(node, i)
+
+        # Check direct path first
+        start_node = nodes[start_idx]
+        end_node = nodes[end_idx]
+        direct_check_args = (start_node, end_node, nodes, grid, min_distance, start_idx, end_idx)
+        if self.is_segment_valid(direct_check_args) is not None:
+            return [start_idx, end_idx], math.sqrt(start_node.squared_dist_to(end_node))
+
+        # Generate candidate pairs using spatial grid
+        candidate_pairs = []
         for i in range(len(nodes)):
-            for j in range(i+1, len(nodes)):
-                if self._is_edge_valid(i, j, nodes, min_distance):
-                    dist = nodes[i].distance_to(nodes[j])
+            current = nodes[i]
+            nearby = grid.get_nearby_indices(current, min_distance * 4)
+            for j in nearby:
+                if j > i:
+                    candidate_pairs.append((
+                        current, nodes[j], nodes, grid, min_distance, i, j
+                    ))
+
+        # Parallel edge validation
+        graph = defaultdict(dict)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            results = executor.map(self.is_segment_valid, candidate_pairs)
+            for result in results:
+                if result is not None:
+                    i, j, dist = result
                     graph[i][j] = dist
                     graph[j][i] = dist
-        return graph
 
-    def _dijkstra(self, graph: dict[int, dict[int, float]], start: int, end: int) -> tuple[list[int], float]:
-        """Find shortest path using Dijkstra's algorithm"""
+        # A* algorithm with heuristic
         heap = []
-        heappush(heap, (0, start))
-        distances = {node: math.inf for node in graph}
-        distances[start] = 0
-        predecessors = {node: None for node in graph}
-
+        heappush(heap, (0, 0, start_idx))
+        g_scores = defaultdict(lambda: math.inf)
+        g_scores[start_idx] = 0
+        came_from = {}
+    
         while heap:
-            current_dist, current_node = heappop(heap)
-            if current_node == end:
+            f, g, current = heappop(heap)
+            if current == end_idx:
                 break
-            if current_dist > distances[current_node]:
+            
+            if g > g_scores[current]:
                 continue
-            for neighbor, weight in graph[current_node].items():
-                distance = current_dist + weight
-                if distance < distances[neighbor]:
-                    distances[neighbor] = distance
-                    predecessors[neighbor] = current_node
-                    heappush(heap, (distance, neighbor))
-
+            
+            for neighbor, cost in graph[current].items():
+                tentative_g = g + cost
+                if tentative_g < g_scores[neighbor]:
+                    came_from[neighbor] = current
+                    g_scores[neighbor] = tentative_g
+                    h = math.sqrt(nodes[neighbor].squared_dist_to(end_node))
+                    heappush(heap, (tentative_g + h, tentative_g, neighbor))
+    
+        # Reconstruct path
         path = []
-        current = end
+        current = end_idx
+        if current not in came_from and current != start_idx:
+            return [], math.inf
+    
         while current is not None:
             path.append(current)
-            current = predecessors[current]
+            current = came_from.get(current)
+    
         path.reverse()
-        return (path, distances[end]) if path and path[0] == start else ([], math.inf)
-
-    def find_shortest_path(self, start_idx: int, end_idx: int, min_distance: float) ->  float:
-        # Check direct path first
-        nodes = [atom.node for atom in self.atoms]
-        start_node = start_idx.node
-        end_node = end_idx.node
-    
-        direct_valid = True
-        for k, node in enumerate(nodes):
-            if k in (start_idx, end_idx):
-                continue
-            if self._distance_segment_to_point(start_node, end_node, node) < min_distance:
-                direct_valid = False
-                break
-    
-        if direct_valid:
-            return [start_idx, end_idx], start_node.distance_to(end_node)
-    
-        # Build graph and find path
-        graph = self._build_graph(nodes, min_distance)
-        path, distance = self._dijkstra(graph, start_idx, end_idx)
-        return distance
+        return (path, g_scores[end_idx]) if path and path[0] == start_idx else ([], math.inf)
 
     def predict_crosslinks(self, 
                            pcd: ProteinChainDataset, 
