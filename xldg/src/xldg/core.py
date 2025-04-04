@@ -5,10 +5,8 @@ import sys
 import re
 import copy
 import math
-import heapq
 
-import numpy as np
-from scipy.spatial import KDTree
+from heapq import heappush, heappop
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
@@ -150,30 +148,6 @@ class Node:
                          (self.y - other.y)**2 + 
                          (self.z - other.z)**2)
 
-@dataclass
-class Edge:
-    """Connection between two nodes with calculated distance"""
-    target: Node
-    distance: float
-
-class Graph:
-    def __init__(self, nodes, adjacency_list):
-        self.nodes = nodes
-        self.adjacency_list = adjacency_list
-        
-    def add_edge(self, node1, node2):
-        dist = node1.distance_to(node2)
-        edge1 = Edge(node2, dist)
-        edge2 = Edge(node1, dist)
-        
-        self.adjacency_list[node1].append(edge1)
-        self.adjacency_list[node2].append(edge2)
-        
-    def get_neighbors(self, node):
-        """Get all neighbors with their distances"""
-        return [(edge.target, edge.distance) for edge in self.adjacency_list.get(node, [])]
-
-
 class Atom:
     def __init__(self, number: int, residue: str, type: str, chain: str, x: float, y: float, z: float):
         self.number = number
@@ -220,13 +194,6 @@ class ProteinStructureDataset:
             self._parse_cif(file_content)
         else:
             raise ValueError("Unsupported file format. Only .pdb and .cif are supported.")
-
-        self.safety_margin = 1.0
-        self._build_spatial_index()
-
-    def _build_spatial_index(self):
-        self.atom_coords = np.array([[a.node.x, a.node.y, a.node.z] for a in self.atoms])
-        self.atom_kdtree = KDTree(self.atom_coords, leafsize=40)
 
     def _three_to_one_letter_code(self, three_letter_code):
         aa_dict = {
@@ -387,226 +354,112 @@ class ProteinStructureDataset:
                         print(f"Error parsing CIF atom entry: {e}")
             i += 1
 
-    def _is_point_valid(self, point: Node) -> bool:
-        """Check if point maintains safety margin"""
-        dist, _ = self.atom_kdtree.query([[point.x, point.y, point.z]], k=1)
-        return dist[0] >= self.safety_margin
+    def _distance_segment_to_point(self, P: Node, Q: Node, C: Node) -> float:
+        """Calculate minimum distance between point C and line segment PQ"""
+        # Vector PQ
+        pq_x = Q.x - P.x
+        pq_y = Q.y - P.y
+        pq_z = Q.z - P.z
 
-    def find_shortest_path_a_star(self, 
-                                     start_atom: 'Atom', 
-                                     end_atom: 'Atom', 
-                                     node_size: float = 1.5,
-                                     connection_radius: float = 4.5,
-                                     safety_margin: float = 1.0
-                                     ) -> float:
-        """Find shortest path between atoms with collision avoidance"""
-        self.safety_margin = safety_margin
-        start_node = start_atom.node
-        end_node = end_atom.node
+        # Vector PC
+        pc_x = C.x - P.x
+        pc_y = C.y - P.y
+        pc_z = C.z - P.z
 
-        # Validate start/end positions
-        if not self._is_point_valid(start_node) or not self._is_point_valid(end_node):
-            return float('inf')
+        # Dot product of PC and PQ
+        dot = pc_x * pq_x + pc_y * pq_y + pc_z * pq_z
+        # Squared length of PQ
+        len_sq = pq_x**2 + pq_y**2 + pq_z**2
 
-        # Build navigation graph
-        nav_graph = self._build_navigation_graph(start_node, end_node, node_size, connection_radius)
-        
-        # Find path using optimized A*
-        try:
-            cost = self._a_star_search(nav_graph, start_node, end_node)
-        except Exception as e:
-            print(f"A* failed: {str(e)}, falling back to Dijkstra")
-            cost = self._dijkstra_search(nav_graph, start_node, end_node)
-        
-        return cost
+        if len_sq == 0:  # P and Q are the same point
+            return P.distance_to(C)
 
-        def _build_navigation_graph(self, 
-                                  start: Node, 
-                                  end: Node, 
-                                  node_size: float,
-                                  connection_radius: float) -> Graph:
-            """Construct the navigation graph"""
-            nodes = self._generate_navigation_nodes(start, end, node_size)
-            nodes = self._force_include_critical_nodes(nodes, start, end)
-        
-            # Build adjacency list
-            adjacency = {n: [] for n in nodes}
-            graph = Graph(nodes, adjacency)
-            node_coords = np.array([[n.x, n.y, n.z] for n in nodes])
-            node_kdtree = KDTree(node_coords)
+        # Parameter t for closest point on segment
+        t = max(0.0, min(1.0, dot / len_sq))
 
-            # Connect valid edges
-            for i, node in enumerate(nodes):
-                indices = node_kdtree.query_ball_point([node.x, node.y, node.z], connection_radius)
-                for j in indices:
-                    if i != j and self._is_edge_valid(node, nodes[j]):
-                        graph.add_edge(node, nodes[j])
-        
-            return graph
+        # Closest point coordinates
+        closest_x = P.x + t * pq_x
+        closest_y = P.y + t * pq_y
+        closest_z = P.z + t * pq_z
 
-        def _generate_navigation_nodes(self, 
-                                     start: Node, 
-                                     end: Node, 
-                                     node_size: float) -> List[Node]:
-            """Generate validated navigation nodes"""
-            centroid = self._calculate_centroid([a.node for a in self.atoms] + [start, end])
-            radius = self._bounding_sphere_radius(centroid, [a.node for a in self.atoms])
-        
-            # Generate adaptive node grid
-            nodes = self._adaptive_grid(centroid, radius, node_size)
-            nodes += [start, end]
-        
-            return self._batch_validate_nodes(nodes, start, end)
+        # Create temporary node for closest point
+        closest_node = Node(closest_x, closest_y, closest_z)
+        return closest_node.distance_to(C)
 
-        def _adaptive_grid(self, center: Node, radius: float, base_size: float) -> List[Node]:
-            """Generate nodes in concentric spheres with adaptive density"""
-            nodes = []
-            golden_angle = math.pi * (3 - math.sqrt(5))
-        
-            num_shells = min(20, int(radius / base_size))
-            for shell_idx, r in enumerate(np.linspace(base_size, radius, num_shells)):
-                # Points per shell based on surface area
-                n_points = min(1000, int(4 * math.pi * (r**2) / (base_size**2)))
-            
-                for i in range(n_points):
-                    theta = golden_angle * i
-                    y = 1 - (i / (n_points - 1)) * 2
-                    r_y = math.sqrt(1 - y*y)
-                
-                    x = math.cos(theta) * r_y
-                    z = math.sin(theta) * r_y
-                
-                    point = Node(
-                        center.x + x * r,
-                        center.y + y * r,
-                        center.z + z * r
-                    )
-                
-                    # Check local atom density
-                    if len(self.atom_kdtree.query_ball_point(
-                        [point.x, point.y, point.z], 
-                        self.safety_margin * 2
-                    )) <= 5:
-                        nodes.append(point)
-        
-            return nodes
-
-        def _batch_validate_nodes(self, nodes: List[Node], start: Node, end: Node) -> List[Node]:
-            """Validate nodes while preserving start/end"""
-            valid_nodes = []
-            start_coords = (start.x, start.y, start.z)
-            end_coords = (end.x, end.y, end.z)
-        
-            for node in nodes:
-                if (node.x, node.y, node.z) in {start_coords, end_coords}:
-                    valid_nodes.append(node)
-                    continue
-                
-                if self._is_point_valid(node):
-                    valid_nodes.append(node)
-        
-            return valid_nodes
-
-
-
-        def _is_edge_valid(self, node1: Node, node2: Node) -> bool:
-            """Check edge clearance from obstacles"""
-            # Special case for start/end connections
-            if {node1, node2} & {self.start_node, self.end_node}:
-                return self._is_point_valid(node1) and self._is_point_valid(node2)
-        
-            # Vector math for collision checking
-            a = np.array([node1.x, node1.y, node1.z])
-            b = np.array([node2.x, node2.y, node2.z])
-            ab = b - a
-            ab_length = np.linalg.norm(ab)
-        
-            if ab_length < 1e-6:
+    def _is_edge_valid(self, i: int, j: int, nodes: list[Node], min_distance: float) -> bool:
+        """Check if edge between nodes[i] and nodes[j] is valid"""
+        if i == j:
+            return False
+        P = nodes[i]
+        Q = nodes[j]
+        for k, C in enumerate(nodes):
+            if k in (i, j):
+                continue
+            if self._distance_segment_to_point(P, Q, C) < min_distance:
                 return False
-            
-            # Find closest points to atoms
-            t = np.clip(np.dot(self.atom_coords - a, ab) / ab_length**2, 0, 1)
-            closest_points = a + t[:, np.newaxis] * ab
-            sq_distances = np.sum((self.atom_coords - closest_points)**2, axis=1)
-        
-            return np.all(sq_distances >= self.safety_margin**2)
+        return True
 
-        def _a_star_search(self, graph: Graph, start: Node, end: Node) -> Tuple[List[Node], float]:
-            """Optimized A* with landmark heuristic"""
-            open_heap = []
-            heapq.heappush(open_heap, (0, 0, start, []))
-            g_scores = {start: 0}
-            visited = set()
-            landmarks = self._select_landmarks(graph.nodes, start, end)
+    def _build_graph(self, nodes: list[Node], min_distance: float) -> dict[int, dict[int, float]]:
+        """Construct graph of valid connections between nodes"""
+        graph = {i: {} for i in range(len(nodes))}
+        for i in range(len(nodes)):
+            for j in range(i+1, len(nodes)):
+                if self._is_edge_valid(i, j, nodes, min_distance):
+                    dist = nodes[i].distance_to(nodes[j])
+                    graph[i][j] = dist
+                    graph[j][i] = dist
+        return graph
 
-            while open_heap:
-                f_score, g_score, current, path = heapq.heappop(open_heap)
-            
-                if current in visited:
-                    continue
-                visited.add(current)
-            
-                if current == end:
-                    return g_score
-                
-                for edge in graph.adjacency_list.get(current, []):
-                    new_g = g_score + edge.distance
-                    if new_g < g_scores.get(edge.target, float('inf')):
-                        g_scores[edge.target] = new_g
-                        h = self._landmark_heuristic(edge.target, end, landmarks)
-                        heapq.heappush(open_heap, (new_g + h, new_g, edge.target, path + [current]))
-        
-            return float('inf')
+    def _dijkstra(self, graph: dict[int, dict[int, float]], start: int, end: int) -> tuple[list[int], float]:
+        """Find shortest path using Dijkstra's algorithm"""
+        heap = []
+        heappush(heap, (0, start))
+        distances = {node: math.inf for node in graph}
+        distances[start] = 0
+        predecessors = {node: None for node in graph}
 
-        def _dijkstra_search(self, graph: Graph, start: Node, end: Node) -> float:
-            """Dijkstra's algorithm fallback"""
-            distances = {node: float('inf') for node in graph.nodes}
-            distances[start] = 0
-            predecessors = {}
-            heap = [(0, start)]
+        while heap:
+            current_dist, current_node = heappop(heap)
+            if current_node == end:
+                break
+            if current_dist > distances[current_node]:
+                continue
+            for neighbor, weight in graph[current_node].items():
+                distance = current_dist + weight
+                if distance < distances[neighbor]:
+                    distances[neighbor] = distance
+                    predecessors[neighbor] = current_node
+                    heappush(heap, (distance, neighbor))
 
-            while heap:
-                current_dist, current = heapq.heappop(heap)
-            
-                if current == end:
-                    break
-                
-                for edge in graph.adjacency_list.get(current, []):
-                    if current_dist + edge.distance < distances[edge.target]:
-                        distances[edge.target] = current_dist + edge.distance
-                        predecessors[edge.target] = current
-                        heapq.heappush(heap, (distances[edge.target], edge.target))
-        
-            if distances[end] == float('inf'):
-                return float('inf')
-            
-            path = []
-            current = end
-            while current in predecessors:
-                path.append(current)
-                current = predecessors[current]
-            return distances[end]
+        path = []
+        current = end
+        while current is not None:
+            path.append(current)
+            current = predecessors[current]
+        path.reverse()
+        return (path, distances[end]) if path and path[0] == start else ([], math.inf)
 
-        # Helper methods
-        def _calculate_centroid(self, points: List[Node]) -> Node:
-            coords = np.array([[p.x, p.y, p.z] for p in points])
-            center = np.mean(coords, axis=0)
-            return Node(center[0], center[1], center[2])
-
-        def _bounding_sphere_radius(self, centroid: Node, points: List[Node]) -> float:
-            coords = np.array([[p.x, p.y, p.z] for p in points])
-            center = np.array([centroid.x, centroid.y, centroid.z])
-            return np.max(np.linalg.norm(coords - center, axis=1)) + 2.0
-
-        def _select_landmarks(self, nodes: List[Node], start: Node, end: Node) -> List[Node]:
-            return [start, end] + nodes[len(nodes)//3::len(nodes)//3][:2]
-
-        def _landmark_heuristic(self, current: Node, goal: Node, landmarks: List[Node]) -> float:
-            direct = current.distance_to(goal)
-            if not landmarks:
-                return direct
-            return max(direct, max(abs(l.distance_to(current) - l.distance_to(goal)) for l in landmarks))
+    def find_shortest_path(self, start_idx: int, end_idx: int, min_distance: float) ->  float:
+        # Check direct path first
+        nodes = [atom.node for atom in self.atoms]
+        start_node = start_idx.node
+        end_node = end_idx.node
     
+        direct_valid = True
+        for k, node in enumerate(nodes):
+            if k in (start_idx, end_idx):
+                continue
+            if self._distance_segment_to_point(start_node, end_node, node) < min_distance:
+                direct_valid = False
+                break
+    
+        if direct_valid:
+            return [start_idx, end_idx], start_node.distance_to(end_node)
+    
+        # Build graph and find path
+        graph = self._build_graph(nodes, min_distance)
+        path, distance = self._dijkstra(graph, start_idx, end_idx)
+        return distance
 
     def predict_crosslinks(self, 
                            pcd: ProteinChainDataset, 
@@ -850,7 +703,6 @@ class CrossLinkDataset:
                     continue
                 # Ignore MeroX dead-end matches
                 if 'x0' in xl.site_1 or 'x0' in xl.site_2:
-                    print(xl)
                     continue
                 
                 if 'H2O' in xl.protein_1 or 'H2O' in xl.protein_2:
@@ -1052,7 +904,6 @@ class CrossLinkDataset:
 
             for xl in self.xls_site_count:
                 validated_xl = self._validate_terminus_sites(xl)
-                print(validated_xl)
                 if validated_xl.protein_1 == key:
                     min_site = min(min_site, validated_xl.num_site_1)
                     max_site = max(max_site, validated_xl.num_site_1)
