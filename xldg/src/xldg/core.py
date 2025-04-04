@@ -5,6 +5,10 @@ import sys
 import re
 import copy
 import math
+import heapq
+
+import numpy as np
+from scipy.spatial import KDTree
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
@@ -134,21 +138,52 @@ class CrossLinkEntity:
     def __str__(self):
         return self.str_info
 
-
-@dataclass
-class Atom:
-    number: int
-    residue: str  # Residue identifier (number + insertion code if present)
-    type: str     # (e.g., 'N', 'CA')
-    chain: str    
+@dataclass(frozen=True)
+class Node:
+    """3D point in space with hashable coordinates"""
     x: float
     y: float
     z: float
 
+    def distance_to(self, other: 'Node') -> float:
+        return math.sqrt((self.x - other.x)**2 + 
+                         (self.y - other.y)**2 + 
+                         (self.z - other.z)**2)
+
+@dataclass
+class Edge:
+    """Connection between two nodes with calculated distance"""
+    target: Node
+    distance: float
+
+class Graph:
+    def __init__(self, nodes, adjacency_list):
+        self.nodes = nodes
+        self.adjacency_list = adjacency_list
+        
+    def add_edge(self, node1, node2):
+        dist = node1.distance_to(node2)
+        edge1 = Edge(node2, dist)
+        edge2 = Edge(node1, dist)
+        
+        self.adjacency_list[node1].append(edge1)
+        self.adjacency_list[node2].append(edge2)
+        
+    def get_neighbors(self, node):
+        """Get all neighbors with their distances"""
+        return [(edge.target, edge.distance) for edge in self.adjacency_list.get(node, [])]
+
+
+class Atom:
+    def __init__(self, number: int, residue: str, type: str, chain: str, x: float, y: float, z: float):
+        self.number = number
+        self.residue = residue  # Residue identifier (number + insertion code if present)
+        self.type = type  # Atom type (e.g., 'N', 'CA')
+        self.chain = chain
+        self.node = Node(x, y, z)
+
     def distance_to(self, other: 'Atom') -> float:
-        return math.sqrt((self.x - other.x) ** 2 + 
-                         (self.y - other.y) ** 2 + 
-                         (self.z - other.z) ** 2)
+        return self.node.distance_to(other.node)
 
     def __hash__(self):
         return hash((self.number, self.residue, self.type, self.chain))
@@ -172,17 +207,26 @@ class Atom:
         return (self.number, self.residue, self.type, self.chain) > (other.number, other.residue, other.type, other.chain)
 
     def __str__(self):
-        return f'{self.number}\t{self.residue}\t{self.type}\t{self.chain}\t{self.x}\t{self.y}\t{self.z}\n'
+        return (f'{self.number}\t{self.residue}\t{self.type}\t{self.chain}\t'
+                f'{self.node.x:.3f}\t{self.node.y:.3f}\t{self.node.z:.3f}')
 
 class ProteinStructureDataset:
     def __init__(self, file_content: str, format: str):
         self.atoms: List[Atom] = []
+
         if format == 'pdb':
             self._parse_pdb(file_content)
         elif format == 'cif':
             self._parse_cif(file_content)
         else:
             raise ValueError("Unsupported file format. Only .pdb and .cif are supported.")
+
+        self.safety_margin = 1.0
+        self._build_spatial_index()
+
+    def _build_spatial_index(self):
+        self.atom_coords = np.array([[a.node.x, a.node.y, a.node.z] for a in self.atoms])
+        self.atom_kdtree = KDTree(self.atom_coords, leafsize=40)
 
     def _three_to_one_letter_code(self, three_letter_code):
         aa_dict = {
@@ -341,7 +385,228 @@ class ProteinStructureDataset:
                         ))
                     except (ValueError, KeyError) as e:
                         print(f"Error parsing CIF atom entry: {e}")
-            i += 1         
+            i += 1
+
+    def _is_point_valid(self, point: Node) -> bool:
+        """Check if point maintains safety margin"""
+        dist, _ = self.atom_kdtree.query([[point.x, point.y, point.z]], k=1)
+        return dist[0] >= self.safety_margin
+
+    def find_shortest_path_a_star(self, 
+                                     start_atom: 'Atom', 
+                                     end_atom: 'Atom', 
+                                     node_size: float = 1.5,
+                                     connection_radius: float = 4.5,
+                                     safety_margin: float = 1.0
+                                     ) -> float:
+        """Find shortest path between atoms with collision avoidance"""
+        self.safety_margin = safety_margin
+        start_node = start_atom.node
+        end_node = end_atom.node
+
+        # Validate start/end positions
+        if not self._is_point_valid(start_node) or not self._is_point_valid(end_node):
+            return float('inf')
+
+        # Build navigation graph
+        nav_graph = self._build_navigation_graph(start_node, end_node, node_size, connection_radius)
+        
+        # Find path using optimized A*
+        try:
+            cost = self._a_star_search(nav_graph, start_node, end_node)
+        except Exception as e:
+            print(f"A* failed: {str(e)}, falling back to Dijkstra")
+            cost = self._dijkstra_search(nav_graph, start_node, end_node)
+        
+        return cost
+
+        def _build_navigation_graph(self, 
+                                  start: Node, 
+                                  end: Node, 
+                                  node_size: float,
+                                  connection_radius: float) -> Graph:
+            """Construct the navigation graph"""
+            nodes = self._generate_navigation_nodes(start, end, node_size)
+            nodes = self._force_include_critical_nodes(nodes, start, end)
+        
+            # Build adjacency list
+            adjacency = {n: [] for n in nodes}
+            graph = Graph(nodes, adjacency)
+            node_coords = np.array([[n.x, n.y, n.z] for n in nodes])
+            node_kdtree = KDTree(node_coords)
+
+            # Connect valid edges
+            for i, node in enumerate(nodes):
+                indices = node_kdtree.query_ball_point([node.x, node.y, node.z], connection_radius)
+                for j in indices:
+                    if i != j and self._is_edge_valid(node, nodes[j]):
+                        graph.add_edge(node, nodes[j])
+        
+            return graph
+
+        def _generate_navigation_nodes(self, 
+                                     start: Node, 
+                                     end: Node, 
+                                     node_size: float) -> List[Node]:
+            """Generate validated navigation nodes"""
+            centroid = self._calculate_centroid([a.node for a in self.atoms] + [start, end])
+            radius = self._bounding_sphere_radius(centroid, [a.node for a in self.atoms])
+        
+            # Generate adaptive node grid
+            nodes = self._adaptive_grid(centroid, radius, node_size)
+            nodes += [start, end]
+        
+            return self._batch_validate_nodes(nodes, start, end)
+
+        def _adaptive_grid(self, center: Node, radius: float, base_size: float) -> List[Node]:
+            """Generate nodes in concentric spheres with adaptive density"""
+            nodes = []
+            golden_angle = math.pi * (3 - math.sqrt(5))
+        
+            num_shells = min(20, int(radius / base_size))
+            for shell_idx, r in enumerate(np.linspace(base_size, radius, num_shells)):
+                # Points per shell based on surface area
+                n_points = min(1000, int(4 * math.pi * (r**2) / (base_size**2)))
+            
+                for i in range(n_points):
+                    theta = golden_angle * i
+                    y = 1 - (i / (n_points - 1)) * 2
+                    r_y = math.sqrt(1 - y*y)
+                
+                    x = math.cos(theta) * r_y
+                    z = math.sin(theta) * r_y
+                
+                    point = Node(
+                        center.x + x * r,
+                        center.y + y * r,
+                        center.z + z * r
+                    )
+                
+                    # Check local atom density
+                    if len(self.atom_kdtree.query_ball_point(
+                        [point.x, point.y, point.z], 
+                        self.safety_margin * 2
+                    )) <= 5:
+                        nodes.append(point)
+        
+            return nodes
+
+        def _batch_validate_nodes(self, nodes: List[Node], start: Node, end: Node) -> List[Node]:
+            """Validate nodes while preserving start/end"""
+            valid_nodes = []
+            start_coords = (start.x, start.y, start.z)
+            end_coords = (end.x, end.y, end.z)
+        
+            for node in nodes:
+                if (node.x, node.y, node.z) in {start_coords, end_coords}:
+                    valid_nodes.append(node)
+                    continue
+                
+                if self._is_point_valid(node):
+                    valid_nodes.append(node)
+        
+            return valid_nodes
+
+
+
+        def _is_edge_valid(self, node1: Node, node2: Node) -> bool:
+            """Check edge clearance from obstacles"""
+            # Special case for start/end connections
+            if {node1, node2} & {self.start_node, self.end_node}:
+                return self._is_point_valid(node1) and self._is_point_valid(node2)
+        
+            # Vector math for collision checking
+            a = np.array([node1.x, node1.y, node1.z])
+            b = np.array([node2.x, node2.y, node2.z])
+            ab = b - a
+            ab_length = np.linalg.norm(ab)
+        
+            if ab_length < 1e-6:
+                return False
+            
+            # Find closest points to atoms
+            t = np.clip(np.dot(self.atom_coords - a, ab) / ab_length**2, 0, 1)
+            closest_points = a + t[:, np.newaxis] * ab
+            sq_distances = np.sum((self.atom_coords - closest_points)**2, axis=1)
+        
+            return np.all(sq_distances >= self.safety_margin**2)
+
+        def _a_star_search(self, graph: Graph, start: Node, end: Node) -> Tuple[List[Node], float]:
+            """Optimized A* with landmark heuristic"""
+            open_heap = []
+            heapq.heappush(open_heap, (0, 0, start, []))
+            g_scores = {start: 0}
+            visited = set()
+            landmarks = self._select_landmarks(graph.nodes, start, end)
+
+            while open_heap:
+                f_score, g_score, current, path = heapq.heappop(open_heap)
+            
+                if current in visited:
+                    continue
+                visited.add(current)
+            
+                if current == end:
+                    return g_score
+                
+                for edge in graph.adjacency_list.get(current, []):
+                    new_g = g_score + edge.distance
+                    if new_g < g_scores.get(edge.target, float('inf')):
+                        g_scores[edge.target] = new_g
+                        h = self._landmark_heuristic(edge.target, end, landmarks)
+                        heapq.heappush(open_heap, (new_g + h, new_g, edge.target, path + [current]))
+        
+            return float('inf')
+
+        def _dijkstra_search(self, graph: Graph, start: Node, end: Node) -> float:
+            """Dijkstra's algorithm fallback"""
+            distances = {node: float('inf') for node in graph.nodes}
+            distances[start] = 0
+            predecessors = {}
+            heap = [(0, start)]
+
+            while heap:
+                current_dist, current = heapq.heappop(heap)
+            
+                if current == end:
+                    break
+                
+                for edge in graph.adjacency_list.get(current, []):
+                    if current_dist + edge.distance < distances[edge.target]:
+                        distances[edge.target] = current_dist + edge.distance
+                        predecessors[edge.target] = current
+                        heapq.heappush(heap, (distances[edge.target], edge.target))
+        
+            if distances[end] == float('inf'):
+                return float('inf')
+            
+            path = []
+            current = end
+            while current in predecessors:
+                path.append(current)
+                current = predecessors[current]
+            return distances[end]
+
+        # Helper methods
+        def _calculate_centroid(self, points: List[Node]) -> Node:
+            coords = np.array([[p.x, p.y, p.z] for p in points])
+            center = np.mean(coords, axis=0)
+            return Node(center[0], center[1], center[2])
+
+        def _bounding_sphere_radius(self, centroid: Node, points: List[Node]) -> float:
+            coords = np.array([[p.x, p.y, p.z] for p in points])
+            center = np.array([centroid.x, centroid.y, centroid.z])
+            return np.max(np.linalg.norm(coords - center, axis=1)) + 2.0
+
+        def _select_landmarks(self, nodes: List[Node], start: Node, end: Node) -> List[Node]:
+            return [start, end] + nodes[len(nodes)//3::len(nodes)//3][:2]
+
+        def _landmark_heuristic(self, current: Node, goal: Node, landmarks: List[Node]) -> float:
+            direct = current.distance_to(goal)
+            if not landmarks:
+                return direct
+            return max(direct, max(abs(l.distance_to(current) - l.distance_to(goal)) for l in landmarks))
+    
 
     def predict_crosslinks(self, 
                            pcd: ProteinChainDataset, 
@@ -350,7 +615,8 @@ class ProteinStructureDataset:
                            min_length: float, 
                            max_length: float, 
                            linker: Optional[str] = None,
-                           atom_type: str = 'CA'
+                           atom_type: str = 'CA',
+                           a_star = False
                            ) -> 'CrossLinkDataset':
    
         filtered_atoms = list(filter(lambda atom: atom.type == atom_type, self.atoms))
@@ -384,14 +650,18 @@ class ProteinStructureDataset:
 
         atoms_1 = _get_all_crosslink_candidates(residues_1)
         atoms_2 = _get_all_crosslink_candidates(residues_2)
-        print(len(atoms_1))
-        print(len(atoms_2))
+
         crosslink_pairs = set()
-        
         distance = 0
+        
         for a1 in atoms_1:
             for a2 in atoms_2:
-                distance = a1.distance_to(a2)
+                if a_star:
+                    distance = self.find_shortest_path_a_star(a1, a2)
+                else:
+                    distance = a1.distance_to(a2)
+                if distance == float('inf'):
+                    continue
                 if distance >= min_length and distance <= max_length:
                    if a1 > a2:
                         crosslink_pairs.add((a1, a2))
@@ -433,7 +703,8 @@ class ProteinStructureDataset:
 class CrossLinkDataset:
     def __init__(self, xls: List['CrossLinkEntity']):
         self.xls = xls
-        self._remove_decoy_xls()
+        self._remove_invalid_xls()
+
         self.size = len(self.xls)
         self.xls_site_count = self._quantify_elements(self.xls)
 
@@ -570,13 +841,22 @@ class CrossLinkDataset:
 
         return element_counts
 
-    def _remove_decoy_xls(self) -> None:
+    def _remove_invalid_xls(self) -> None:
         buffer = []
         for xl in self.xls:
             if xl.software == 'MeroX':
                 # Ignore MeroX decoy matches
                 if 'DEC_' in xl.protein_1 or 'DEC_' in xl.protein_2:
                     continue
+                # Ignore MeroX dead-end matches
+                if 'x0' in xl.site_1 or 'x0' in xl.site_2:
+                    print(xl)
+                    continue
+                
+                if 'H2O' in xl.protein_1 or 'H2O' in xl.protein_2:
+                    continue
+
+
             buffer.append(xl)
         self.xls = buffer
 
@@ -664,21 +944,18 @@ class CrossLinkDataset:
                 site2_str = str(crosslink.num_site_2)
             
                 # Find matching atoms for both sites
-                matching_atoms1 = [atom for atom in filtered_protein_structure if str(atom.number) == site1_str]
-                matching_atoms2 = [atom for atom in filtered_protein_structure if str(atom.number) == site2_str]
-            
-                # Check if we found matching atoms
-                if matching_atoms1 and matching_atoms2:
-                    # Calculate distance between first matching atoms
-                    distance = matching_atoms1[0].distance_to(matching_atoms2[0])
-                
-                    if distance >= min_distance and distance <= max_distance:
-                        valid_buffer.append(f"/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_valid_distance}")
-                    else:
-                        outliar_buffer.append(f"/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_invalid_outsider}")
+                matching_atoms1 = [atom for atom in filtered_protein_structure if str(atom.number) == site1_str and atom.chain == chain1]
+                matching_atoms2 = [atom for atom in filtered_protein_structure if str(atom.number) == site2_str and atom.chain == chain2]
+
+                if len(matching_atoms1) != 1 or len(matching_atoms1) != 1:
+                    raise ValueError(f'Wrong chain assignment in ProteinChain file')
+
+                distance = matching_atoms1[0].distance_to(matching_atoms2[0])
+                if distance >= min_distance and distance <= max_distance:
+                    valid_buffer.append(f"/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_valid_distance}")
                 else:
-                    # If atoms not found but we have structure, consider it an outlier
                     outliar_buffer.append(f"/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_invalid_outsider}")
+
             else:
                 # No protein structure to validate against, consider all valid
                 valid_buffer.append(f"/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_valid_distance}")
@@ -699,7 +976,7 @@ class CrossLinkDataset:
                     continue
 
                 crosslink = self._validate_terminus_sites(key)
-                chains = pcd[crosslink.protein_1]             
+                chains = pcd[crosslink.protein_1] 
                 if crosslink.is_homotypical:
                     for c1 in chains:
                         for c2 in chains:
@@ -728,8 +1005,6 @@ class CrossLinkDataset:
             _write_to_pb_file(buffer_heterotypical_inter_xl, f"{file_name}_heterotypical_interprotein_xl_{xl_frequency}_rep.pb")
             _write_to_pb_file(buffer_heterotypical_intra_xl, f"{file_name}_heterotypical_intraprotein_xl_{xl_frequency}_rep.pb")
             _write_to_pb_file(buffer_homotypical_xl, f"{file_name}_homotypical_xl_{xl_frequency}_rep.pb")
-
-        print(f"DB files saved to {folder_path}")
 
     def export_ppis_for_gephi(
         self, 
@@ -777,6 +1052,7 @@ class CrossLinkDataset:
 
             for xl in self.xls_site_count:
                 validated_xl = self._validate_terminus_sites(xl)
+                print(validated_xl)
                 if validated_xl.protein_1 == key:
                     min_site = min(min_site, validated_xl.num_site_1)
                     max_site = max(max_site, validated_xl.num_site_1)
@@ -808,8 +1084,6 @@ class CrossLinkDataset:
             validated_xl = self._validate_terminus_sites(xl)
             for chain1, id1 in chain_buffer.items():
                 for chain2, id2 in chain_buffer.items():
-                    if chain1 == chain2:
-                        continue
 
                     if (validated_xl.protein_1 == id1 and validated_xl.protein_2 == id2):
                         first_id = f'{chain1}{validated_xl.num_site_1}_{id1}'
