@@ -5,14 +5,8 @@ import sys
 import re
 import copy
 import math
-
-from heapq import heappush, heappop
 from dataclasses import dataclass
-from collections import defaultdict
-from itertools import product
-from concurrent.futures import ThreadPoolExecutor
-
-from heapq import heappush, heappop
+import itertools
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
@@ -55,11 +49,24 @@ class CrossLinkEntity:
         self.protein_1 = self._remove_text_in_brackets(self.protein_1).replace('  ', ' ') #Fix for a strange Merox assignment
         self.from_1 = int(self.from_1)
         self.to_1 = int(self.to_1)
-        self.num_site_1 = self.from_1 + int(self.site_1[1:])
+        self.num_site_1 = self.from_1 + int(self.site_1[1:]) - 1
+
+        # Handling N-terminus crosslink
+        if self.num_site_1 <= 0:
+            self.num_site_1 = 1
+
         self.protein_2 = self._remove_text_in_brackets(self.protein_2).replace('  ', ' ') #Fix for a strange Merox assignment
         self.from_2 = int(self.from_2)
         self.to_2 = int(self.to_2)
-        self.num_site_2 =  self.from_2 + int(self.site_2[1:])
+        self.num_site_2 =  self.from_2 + int(self.site_2[1:]) - 1
+
+        if self.num_site_2 <= 0:
+            self.num_site_2 = 1
+
+        # Handling N-terminus crosslink
+        if self.num_site_2 <= 0:
+            self.num_site_2 = 1
+
         self.score = int(self.score)
 
     def _initialize_predicted_xl(self):
@@ -112,7 +119,6 @@ class CrossLinkEntity:
         else:
             raise Exception(f'{self.software} is not supported.')
 
-        self.str_info = f'{self.protein_1},{self.site_1},{self.protein_2},{self.site_2},{self.score}'
         self.is_interprotein = (self.protein_1 != self.protein_2)
         self.is_homotypical = (self.protein_1 == self.protein_2 and (self.num_site_1 == self.num_site_2 
                                                                      or self.peptide_1 == self.peptide_2))
@@ -120,27 +126,44 @@ class CrossLinkEntity:
             self.is_homotypical = self.protein_1 == self.protein_2 and self.num_site_1 == self.num_site_2
     
     def __eq__(self, other):
-        return (self.protein_1 == other.protein_1 and
-                self.peptide_1 == other.peptide_1 and
-                self.site_1 == other.site_1 and
-                self.protein_2 == other.protein_2 and
-                self.peptide_2 == other.peptide_2 and
-                self.site_2 == other.site_2)  
+        direct_match = None
+        reverse_match = None
+        if not isinstance(other, CrossLinkEntity):
+            raise ValueError(
+                "Cannot compare CrossLinkEntity with non-CrossLinkEntity object")
+
+        if self.software == 'Prediction' or other.software == 'Prediction':
+            direct_match = (self.protein_1 == other.protein_1 and
+                            self.num_site_1 == other.num_site_1 and
+                            self.protein_2 == other.protein_2 and
+                            self.num_site_2 == other.num_site_2) 
+            reverse_match = (self.protein_1 == other.protein_2 and
+                            self.num_site_1 == other.num_site_2 and
+                            self.protein_2 == other.protein_1 and
+                            self.num_site_2 == other.num_site_1) 
+        else:
+            direct_match = (self.protein_1 == other.protein_1 and
+                            self.peptide_1 == other.peptide_1 and
+                            self.site_1 == other.site_1 and
+                            self.protein_2 == other.protein_2 and
+                            self.peptide_2 == other.peptide_2 and
+                            self.site_2 == other.site_2) 
+            reverse_match = (self.protein_1 == other.protein_2 and
+                            self.peptide_1 == other.peptide_2 and
+                            self.site_1 == other.site_2 and
+                            self.protein_2 == other.protein_1 and
+                            self.peptide_2 == other.peptide_1 and
+                            self.site_2 == other.site_1)  
+        return direct_match or reverse_match
     
     def __hash__(self):
-        return hash((self.protein_1, 
-                     self.peptide_1, 
-                     self.from_1, 
-                     self.to_1, 
-                     self.site_1, 
-                     self.protein_2, 
-                     self.peptide_2, 
-                     self.from_2, 
-                     self.to_2, 
-                     self.site_2))
+        if self.protein_1 < self.protein_2 or (self.protein_1 == self.protein_2 and self.num_site_1 <= self.num_site_2):
+            return hash((self.protein_1, self.num_site_1, self.protein_2, self.num_site_2))
+        else:
+            return hash((self.protein_2, self.num_site_2, self.protein_1, self.num_site_1))
     
     def __str__(self):
-        return self.str_info
+        return f'{self.protein_1},{self.num_site_1},{self.protein_2},{self.num_site_2}'
 
 @dataclass(frozen=True)
 class Node:
@@ -153,9 +176,6 @@ class Node:
         return math.sqrt((self.x - other.x)**2 + 
                          (self.y - other.y)**2 + 
                          (self.z - other.z)**2)
-
-    def squared_dist_to(self, other: 'Node') -> float:
-        return (self.x - other.x)**2 + (self.y - other.y)**2 + (self.z - other.z)**2
 
 class Atom:
     def __init__(self, number: int, residue: str, type: str, chain: str, x: float, y: float, z: float):
@@ -363,220 +383,89 @@ class ProteinStructureDataset:
                         print(f"Error parsing CIF atom entry: {e}")
             i += 1
 
-    class SpatialGrid:
-        def __init__(self, cell_size: float):
-            self.cell_size = cell_size
-            self.grid = defaultdict(set)
-        
-        def _get_cell_key(self, node: Node) -> tuple[int, int, int]:
-            return (int(node.x // self.cell_size),
-                    int(node.y // self.cell_size),
-                    int(node.z // self.cell_size))
-
-        def add_node(self, node: Node, index: int):
-            self.grid[self._get_cell_key(node)].add(index)
-        
-        def get_nearby_indices(self, node: Node, radius: float) -> set[int]:
-            radius_cells = math.ceil(radius / self.cell_size)
-            cell = self._get_cell_key(node)
-            nearby = set()
-        
-            for dx, dy, dz in product(range(-radius_cells, radius_cells+1), repeat=3):
-                nearby_cell = (cell[0] + dx, cell[1] + dy, cell[2] + dz)
-                nearby.update(self.grid.get(nearby_cell, set()))
-            
-            return nearby
-
-    def is_segment_valid(self, args: tuple) -> tuple[int, int, float] | None:
-        a, b, nodes, grid, min_distance, i, j = args
-        min_sq = min_distance ** 2
-        dir_vec = (b.x - a.x, b.y - a.y, b.z - a.z)
-        length_sq = dir_vec[0]**2 + dir_vec[1]**2 + dir_vec[2]**2
-    
-        search_radius = min_distance + math.sqrt(length_sq)/2
-        nearby_indices = grid.get_nearby_indices(a, search_radius) | grid.get_nearby_indices(b, search_radius)
-    
-        for k in nearby_indices:
-            if k in {i, j}:
-                continue
-            c = nodes[k]
-            if a.squared_dist_to(c) > (math.sqrt(length_sq) + min_distance)**2 and \
-               b.squared_dist_to(c) > (math.sqrt(length_sq) + min_distance)**2:
-                continue
-            
-            t = ((c.x - a.x)*dir_vec[0] + (c.y - a.y)*dir_vec[1] + (c.z - a.z)*dir_vec[2]) / length_sq
-            t = max(0, min(1, t))
-            closest_x = a.x + t*dir_vec[0]
-            closest_y = a.y + t*dir_vec[1]
-            closest_z = a.z + t*dir_vec[2]
-        
-            if (closest_x - c.x)**2 + (closest_y - c.y)**2 + (closest_z - c.z)**2 < min_sq:
-                return None
-
-        return (i, j, math.sqrt(a.squared_dist_to(b)))
-    
-    def find_shortest_path(self, 
-                           start_idx: int, 
-                           end_idx: int, 
-                           min_distance: float, 
-                           max_workers: int = None
-                           ) -> tuple[list[int], float]:
-
-        nodes = [atom.node for atom in self.atoms]
-        # Initialize spatial grid
-        cell_size = min_distance * 2
-        grid = self.SpatialGrid(cell_size)
-        for i, node in enumerate(nodes):
-            grid.add_node(node, i)
-
-        # Check direct path first
-        start_node = nodes[start_idx]
-        end_node = nodes[end_idx]
-        direct_check_args = (start_node, end_node, nodes, grid, min_distance, start_idx, end_idx)
-        if self.is_segment_valid(direct_check_args) is not None:
-            return [start_idx, end_idx], math.sqrt(start_node.squared_dist_to(end_node))
-
-        # Generate candidate pairs using spatial grid
-        candidate_pairs = []
-        for i in range(len(nodes)):
-            current = nodes[i]
-            nearby = grid.get_nearby_indices(current, min_distance * 4)
-            for j in nearby:
-                if j > i:
-                    candidate_pairs.append((
-                        current, nodes[j], nodes, grid, min_distance, i, j
-                    ))
-
-        # Parallel edge validation
-        graph = defaultdict(dict)
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            results = executor.map(self.is_segment_valid, candidate_pairs)
-            for result in results:
-                if result is not None:
-                    i, j, dist = result
-                    graph[i][j] = dist
-                    graph[j][i] = dist
-
-        # A* algorithm with heuristic
-        heap = []
-        heappush(heap, (0, 0, start_idx))
-        g_scores = defaultdict(lambda: math.inf)
-        g_scores[start_idx] = 0
-        came_from = {}
-    
-        while heap:
-            f, g, current = heappop(heap)
-            if current == end_idx:
-                break
-            
-            if g > g_scores[current]:
-                continue
-            
-            for neighbor, cost in graph[current].items():
-                tentative_g = g + cost
-                if tentative_g < g_scores[neighbor]:
-                    came_from[neighbor] = current
-                    g_scores[neighbor] = tentative_g
-                    h = math.sqrt(nodes[neighbor].squared_dist_to(end_node))
-                    heappush(heap, (tentative_g + h, tentative_g, neighbor))
-    
-        # Reconstruct path
-        path = []
-        current = end_idx
-        if current not in came_from and current != start_idx:
-            return [], math.inf
-    
-        while current is not None:
-            path.append(current)
-            current = came_from.get(current)
-    
-        path.reverse()
-        return (path, g_scores[end_idx]) if path and path[0] == start_idx else ([], math.inf)
-
     def predict_crosslinks(self, 
-                           pcd: ProteinChainDataset, 
-                           residues_1: str, 
-                           residues_2: str, 
-                           min_length: float, 
-                           max_length: float, 
-                           linker: Optional[str] = None,
-                           atom_type: str = 'CA',
-                           a_star = False
-                           ) -> 'CrossLinkDataset':
-   
+                          pcd: ProteinChainDataset, 
+                          residues_1: str, 
+                          residues_2: str, 
+                          min_length: float, 
+                          max_length: float, 
+                          linker: Optional[str] = None,
+                          atom_type: str = 'CA'
+                          ) -> 'CrossLinkDataset':
+
         filtered_atoms = list(filter(lambda atom: atom.type == atom_type, self.atoms))
         if len(filtered_atoms) == 0:
             raise ValueError(f'Invalid atom type {atom_type}')
-
-        def _get_all_crosslink_candidates(recidues: str) -> List['Atom']:
-            recidues = list(recidues)
+    
+        def get_all_crosslink_candidates(residues: str) -> List['Atom']:
+            residue_chars = list(residues)
             atoms = []
             for _, chains in pcd:
                 for chain in chains:
-                    for res in recidues:
+                    for res in residue_chars:
                         if res == '{':
+                            # Find N-terminus atom
                             for atom in filtered_atoms:
                                 if atom.chain == chain and atom.type == atom_type and atom.number == 1:
                                     atoms.append(atom)
                                     break
                         elif res == '}':
+                            # Find C-terminus atom
                             last_atom = None
                             counter = 0
                             for atom in filtered_atoms:
                                 if atom.chain == chain and atom.type == atom_type and atom.number > counter:
                                     counter = atom.number
                                     last_atom = atom
-                            atoms.append(last_atom)
+                            if last_atom:  # Only append if we found an atom
+                                atoms.append(last_atom)
                         else:
+                            # Find all atoms of specific residue type
                             for atom in filtered_atoms:
                                 if atom.chain == chain and atom.type == atom_type and atom.residue == res:
                                     atoms.append(atom)
             return atoms
+    
+        atoms_1 = get_all_crosslink_candidates(residues_1)
+        atoms_2 = get_all_crosslink_candidates(residues_2)
 
-        atoms_1 = _get_all_crosslink_candidates(residues_1)
-        atoms_2 = _get_all_crosslink_candidates(residues_2)
-
-        crosslink_pairs = set()
-        distance = 0
-        
+        crosslink_pairs = []  # Using list instead of set to preserve order
+    
         for a1 in atoms_1:
             for a2 in atoms_2:
-                if a_star:
-                    distance = self.find_shortest_path_a_star(a1, a2)
-                else:
-                    distance = a1.distance_to(a2)
-                if distance == float('inf'):
+                # Avoid self-crosslinks (same atom)
+                if a1 is a2:
                     continue
-                if distance >= min_length and distance <= max_length:
-                   if a1 > a2:
-                        crosslink_pairs.add((a1, a2))
-                   else:
-                        crosslink_pairs.add((a2, a1))
-        
-        def _get_protein_by_chain(chain: str) -> str:
+                
+                distance = a1.distance_to(a2)
+                if min_length <= distance <= max_length:
+                    crosslink_pairs.append((a1, a2))
+    
+        def get_protein_by_chain(chain: str) -> str:
             for protein, chains in pcd:
                 for ch in chains:
                     if ch == chain:
                         return protein
             raise ValueError(f'Undefined protein chain {chain}')
-
+    
         crosslinks = []
-        for x, y in crosslink_pairs:
+        for a1, a2 in crosslink_pairs:
             crosslinks.append(CrossLinkEntity(
-                _get_protein_by_chain(x.chain),
+                get_protein_by_chain(a1.chain),
                 '',
                 '-1',
                 '-1',
-                x.residue + str(x.number),
-                 _get_protein_by_chain(y.chain),
+                a1.residue + str(a1.number),
+                get_protein_by_chain(a2.chain),
                 '',
                 '-1',
                 '-1',
-                y.residue + str(y.number),
+                a2.residue + str(a2.number),
                 '-1',
                 'Prediction',
                 linker
-                ))
+            ))
+    
         return CrossLinkDataset(crosslinks)
         
     def __iter__(self):
@@ -590,7 +479,6 @@ class CrossLinkDataset:
         self.xls = xls
         self._remove_invalid_xls()
 
-        self.size = len(self.xls)
         self.xls_site_count = self._quantify_elements(self.xls)
 
     def __iter__(self):
@@ -627,7 +515,7 @@ class CrossLinkDataset:
         return self.xls[index]
 
     def __len__(self):
-        return self.size
+        return len(self.xls)
 
     def filter_by_score(self, min_score: int = 0, max_score: int = sys.maxsize) -> 'CrossLinkDataset':
         filtered_list = []
@@ -644,7 +532,6 @@ class CrossLinkDataset:
                 filterered_xls_site_count[xl] = count
                     
         self.xls = filtered_list
-        self.size = len(self.xls)
         self.xls_site_count = filterered_xls_site_count
         return self
 
@@ -664,7 +551,6 @@ class CrossLinkDataset:
 
         self.xls_site_count = filtered_xls_site_count
         self.xls = filtered_xls
-        self.size = len(self.xls)
         return self
 
     def remove_interprotein_crosslinks(self) -> 'CrossLinkDataset':
@@ -708,7 +594,6 @@ class CrossLinkDataset:
                     filtered_xls_site_count[xl2] = count
 
         self.xls = xls
-        self.size = len(self.xls)
         self.xls_site_count = filtered_xls_site_count
 
     def blank_replica_counter(self)  -> 'CrossLinkDataset':
@@ -739,7 +624,6 @@ class CrossLinkDataset:
                 
                 if 'H2O' in xl.protein_1 or 'H2O' in xl.protein_2:
                     continue
-
 
             buffer.append(xl)
         self.xls = buffer
@@ -781,7 +665,7 @@ class CrossLinkDataset:
 
         with open(file, 'w') as file:
             file.write(header)
-            for xl in self.xls():
+            for xl in self.xls:
                 file.write(
                     f"{xl.software}{separator}{xl.protein_1}{separator}{xl.peptide_1}{separator}"
                     f"{xl.from_1}{separator}{xl.to_1}{separator}{xl.site_1}{separator}"
@@ -1137,7 +1021,6 @@ class FastaDataset:
         self.fasta_format = fasta_format
         self.remove_parenthesis = remove_parenthesis
         self.entities = self._parse_fasta_content(raw_fasta_content)
-        self.size = len(self.entities)
         self._iter_index = 0 
 
     def _parse_fasta_content(self, raw_fasta_content: str) -> List['FastaEntity']:
@@ -1180,14 +1063,14 @@ class FastaDataset:
         return entries
     
     def __len__(self):
-        return self.size
+        return len(self.entities)
 
     def __iter__(self) -> Iterator['FastaEntity']:
         self._iter_index = 0
         return self
     
     def __next__(self) -> 'FastaEntity':
-        if self._iter_index < self.size:
+        if self._iter_index < len(self.entities):
             entity = self.entities[self._iter_index]
             self._iter_index += 1
             return entity
@@ -1208,7 +1091,6 @@ class FastaDataset:
 
         # Unifies sector plotting order on a final figure
         self.entities = sorted(list(filtered_entities)) 
-        self.size = len(self.entities)
         return self
 
     def find_gene_by_fasta_header(self, header: str) -> str:

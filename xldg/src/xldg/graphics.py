@@ -7,12 +7,11 @@ import copy
 import re
 
 from pycirclize import Circos as circos
-
-# from matplotlib_venn import venn2
-# from matplotlib_venn import venn3
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
+from matplotlib_venn import venn2
+from matplotlib_venn import venn3
 
 from xldg.core import CrossLinkDataset, FastaDataset, DomainDataset
 
@@ -311,11 +310,11 @@ class Circos:
         if self.config.title is not None:    
             self.fig.text(0.5, 1.05, self.config.title, ha='center', va='center', fontsize=self.config.title_font_size)
     
-    def set_xls_colors(self, 
-                      heterotypic_intraprotein_xl_color = '#21a2ed', 
-                      heterotypic_interprotein_xl_color = '#00008B', 
-                      homotypic_xl_color = '#ed2b21', 
-                      general_xl_color = '#7d8082') -> None:
+    def set_colors(self, 
+                   heterotypic_intraprotein_xl_color = '#21a2ed', 
+                   heterotypic_interprotein_xl_color = '#00008B', 
+                   homotypic_xl_color = '#ed2b21', 
+                   general_xl_color = '#7d8082') -> None:
 
         def _valid_hex_color(color) -> str:
             hex_color_pattern = r'^#([0-9A-Fa-f]{3}){1,2}$'
@@ -329,49 +328,145 @@ class Circos:
         self.general_xl_color = _valid_hex_color(general_xl_color)
 
 
-# # @dataclass
-# # class VennConfig:
-# #     labels: List[str]
-# #     domain_colors: List[str]
-# #     overlap_colors: List[str]
-# #     legend: Optional[str] = None
-# #     title: Optional[str] = None
-# #     title_font: int = 16
-# #     legend_font: int = 16
-# #     plot_legend: bool = True
-# #     dpi: int = 600
-# #     figsize: Tuple[float, float] = (9, 9)
+@dataclass
+class VennConfig:
+    label_1: Optional[str] = None
+    label_2: Optional[str] = None
+    label_3: Optional[str] = None
+    title: Optional[str] = None
+    title_font: int = 16
+    legend_font: int = 16
+    figsize: Tuple[float, float] = (9, 9)
 
-# # # xls: 'CrossLinkDataset'
+class Venn2:
+    def __init__(self,
+                 xls_list1: 'CrossLinkDataset', 
+                 xls_list2: 'CrossLinkDataset', 
+                 config: 'VennConfig'
+                 ):
 
-# # # TODO: test and improve
-# # def build_ven2_diagram_of_xl_sites(save_path: str, xls_list1: 'CrossLinkDataset', xls_list2: 'CrossLinkDataset', config: 'Venn2_Config') -> None:
-# #     self.config = copy.deepcopy(config)
-# #     plt.figure(figsize=(10, 10), dpi=600)
+        self.config = copy.deepcopy(config)
+        self.first_color = '#9AE66E'  # pastel green
+        self.second_color = '#FAF278'  # pastel yellow
+        self.overlap = '#87D5F8'  # pastel blue
+        
+        self.fig = plt.figure(figsize=self.config.figsize)
+        
+        set1 = set([str(sublist) for sublist in xls_list1])
+        set2 = set([str(sublist) for sublist in xls_list2])
+
+        self.venn = venn2([set1, set2], (self.config.label_1, self.config.label_2))
     
-# #     set1 = set([str(sublist) for sublist in xls_list1])
-# #     set2 = set([str(sublist) for sublist in xls_list2])
-# #     venn = venn2([set1, set2], (label1, label2))
+    def set_colors(self, 
+                   first_color = '#9AE66E', 
+                   second_color = '#FAF278', 
+                   overlap = '#87D5F8'):
 
-# #     # Customize colors
-# #     venn.get_patch_by_id('10').set_color('#9AE66E') # pastel green
-# #     venn.get_patch_by_id('01').set_color('#FAF278') # pastel yellow
-# #     venn.get_patch_by_id('11').set_color('#87D5F8') # pastel blue
+        self.first_color = first_color
+        self.second_color = second_color
+        self.overlap = overlap
+        
+    def save(self, path: str):
+        self.venn.get_patch_by_id('10').set_color(self.first_color) 
+        self.venn.get_patch_by_id('01').set_color(self.second_color)
 
-# #     # Label the regions with the number of elements
-# #     for subset in ('10', '01', '11'):
-# #         if venn.get_label_by_id(subset):
-# #             venn.get_label_by_id(subset).set_text(f'{venn.get_label_by_id(subset).get_text()}')
+        if self.venn.get_patch_by_id('11') != None:
+            self.venn.get_patch_by_id('11').set_color(self.overlap) 
+        
+        # Label the regions with the number of elements
+        for subset in ('10', '01', '11'):
+            if self.venn.get_label_by_id(subset):
+                self.venn.get_label_by_id(subset).set_text(f'{self.venn.get_label_by_id(subset).get_text()}')
+        
+        # Customize font size
+        for text in self.venn.set_labels:
+            text.set_fontsize(self.config.legend_font)
+        
+        for text in self.venn.subset_labels:
+            if text:  # Check if the subset label is not None
+                text.set_fontsize(self.config.legend_font)
+        
+        if self.config.title is not None:
+            plt.title(self.config.title).set_fontsize(self.config.title_font)
+        
+        self.fig.savefig(path)
+        plt.close(self.fig)
+        print(f'Venn2 diagram saved to {path}')
 
-# #     # Customize font size
-# #     for text in venn.set_labels:
-# #         text.set_fontsize(size)
 
-# #     for text in venn.subset_labels:
-# #         if text:  # Check if the subset label is not None
-# #             text.set_fontsize(size)
-# #     if title != None:
-# #         plt.title(title).set_fontsize(18)
+class Venn3:
+    def __init__(self,
+                 xls_list1: 'CrossLinkDataset', 
+                 xls_list2: 'CrossLinkDataset',
+                 xls_list3: 'CrossLinkDataset',
+                 config: 'VennConfig'
+                 ):
+        self.config = copy.deepcopy(config)
+        self.first_color = '#9AE66E'  # pastel green
+        self.second_color = '#FAF278'  # pastel yellow
+        self.third_color = '#FF9AA2'   # pastel pink
+        self.overlap_12 = '#87D5F8'   # pastel blue
+        self.overlap_13 = '#C3B1E1'   # pastel purple
+        self.overlap_23 = '#FFDAC1'   # pastel orange
+        self.overlap_123 = '#FFFFD8'  # pastel light yellow
+        
+        self.fig = plt.figure(figsize=self.config.figsize)
+        
+        set1 = set([str(sublist) for sublist in xls_list1])
+        set2 = set([str(sublist) for sublist in xls_list2])
+        set3 = set([str(sublist) for sublist in xls_list3])
+        self.venn = venn3([set1, set2, set3], (self.config.label_1, self.config.label_2, self.config.label_3))
+    
+    def set_colors(self, 
+                   first_color = '#9AE66E',  # pastel green
+                   second_color = '#FAF278',  # pastel yellow
+                   third_color = '#FF9AA2',   # pastel pink
+                   overlap_12 = '#87D5F8',    # pastel blue
+                   overlap_13 = '#C3B1E1',    # pastel purple
+                   overlap_23 = '#FFDAC1',    # pastel orange
+                   overlap_123 = '#FFFFD8'):  # pastel light yellow
+        self.first_color = first_color
+        self.second_color = second_color
+        self.third_color = third_color
+        self.overlap_12 = overlap_12
+        self.overlap_13 = overlap_13
+        self.overlap_23 = overlap_23
+        self.overlap_123 = overlap_123
+        
+    def save(self, path: str):
+        # Set colors for each region
+        self.venn.get_patch_by_id('100').set_color(self.first_color)
+        self.venn.get_patch_by_id('010').set_color(self.second_color)
+        self.venn.get_patch_by_id('001').set_color(self.third_color)
 
-# #     plt.savefig(save_path)
-# #     print(f'Venn2 diagram saved to {save_path}')
+        if self.venn.get_patch_by_id('110') != None:
+            self.venn.get_patch_by_id('110').set_color(self.overlap_12)
+
+        if self.venn.get_patch_by_id('101') != None:
+            self.venn.get_patch_by_id('101').set_color(self.overlap_13)
+
+        if self.venn.get_patch_by_id('011') != None:
+            self.venn.get_patch_by_id('011').set_color(self.overlap_23)
+
+        if self.venn.get_patch_by_id('111') != None:
+            self.venn.get_patch_by_id('111').set_color(self.overlap_123)
+        
+        # Label the regions with the number of elements
+        for subset in ('100', '010', '001', '110', '101', '011', '111'):
+            if self.venn.get_label_by_id(subset):
+                self.venn.get_label_by_id(subset).set_text(f'{self.venn.get_label_by_id(subset).get_text()}')
+        
+        # Customize font size
+        for text in self.venn.set_labels:
+            text.set_fontsize(self.config.legend_font)
+        
+        for text in self.venn.subset_labels:
+            if text:  # Check if the subset label is not None
+                text.set_fontsize(self.config.legend_font)
+        
+        if self.config.title is not None:
+            plt.title(self.config.title).set_fontsize(self.config.title_font)
+        
+        self.fig.savefig(path)
+        plt.close(self.fig)
+        print(f'Venn3 diagram saved to {path}')

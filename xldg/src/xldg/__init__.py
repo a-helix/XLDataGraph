@@ -1,6 +1,6 @@
 from xldg.core import ProteinChainDataset, CrossLinkEntity, CrossLinkDataset, FastaEntity, FastaDataset, DomainEntity, DomainDataset, ProteinStructureDataset
 from xldg.data import Path, Fasta, Domain, MeroX, CrossLink, ProteinChain, ProteinStructure, Util
-from xldg.graphics import CircosConfig, Circos 
+from xldg.graphics import CircosConfig, Circos, VennConfig, Venn2, Venn3
 
 __version__ = "0.2.2"
 __all__ = ["ProteinChainDataset", 
@@ -20,4 +20,7 @@ __all__ = ["ProteinChainDataset",
            "ProteinStructure", 
            "Util",
            "CircosConfig",
-           "Circos"]
+           "Circos",
+           "VennConfig",
+           "Venn2",
+           "Venn3"]

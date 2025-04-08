@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>a9d1593d-9273-4f28-aa52-952659dd5c68</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>examples\chimerax\Lydia.py</StartupFile>
+    <StartupFile>examples\chimerax\predict_crosslinks.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -27,8 +27,8 @@
   <ItemGroup>
     <Compile Include="examples\chimerax\chimerax_export_with_protein_structure.py" />
     <Compile Include="examples\chimerax\Felix.py" />
-    <Compile Include="examples\chimerax\Felix2.py" />
-    <Compile Include="examples\chimerax\Lydia.py" />
+    <Compile Include="examples\chimerax\predict_crosslinks.py" />
+    <Compile Include="examples\chimerax\venn_diagram.py" />
     <Compile Include="examples\circus.py" />
     <Compile Include="examples\gephi.py" />
     <Compile Include="examples\gephi_export.py" />
