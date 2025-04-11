@@ -121,8 +121,6 @@ class Circos:
 
         self.fig.savefig(path)
         plt.close(self.fig)
-        print(f'Circos plot saved to {path}')
-    
 
     def _assign_colors(self) -> None:
         prot_colors = {}
@@ -391,7 +389,6 @@ class Venn2:
         
         self.fig.savefig(path)
         plt.close(self.fig)
-        print(f'Venn2 diagram saved to {path}')
 
 
 class Venn3:
@@ -469,4 +466,3 @@ class Venn3:
         
         self.fig.savefig(path)
         plt.close(self.fig)
-        print(f'Venn3 diagram saved to {path}')

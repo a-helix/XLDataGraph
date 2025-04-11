@@ -7,10 +7,14 @@ import copy
 import math
 from dataclasses import dataclass
 import itertools
+import random
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
+import numpy as np
+from scipy.spatial import distance
+import networkx as nx
 
 class ProteinChainDataset:
     def __init__(self, pcd_data: str):
@@ -177,6 +181,9 @@ class Node:
                          (self.y - other.y)**2 + 
                          (self.z - other.z)**2)
 
+    def to_tuple(self):
+        return (self.x, self.y, self.z)
+
 class Atom:
     def __init__(self, number: int, residue: str, type: str, chain: str, x: float, y: float, z: float):
         self.number = number
@@ -216,6 +223,7 @@ class Atom:
 class ProteinStructureDataset:
     def __init__(self, file_content: str, format: str):
         self.atoms: List[Atom] = []
+        self.primary_nodes = None
 
         if format == 'pdb':
             self._parse_pdb(file_content)
@@ -383,6 +391,369 @@ class ProteinStructureDataset:
                         print(f"Error parsing CIF atom entry: {e}")
             i += 1
 
+    def _is_path_distance_in_range(
+        self,
+        start: int,
+        goal: int,
+        min_distance: float,
+        max_distance: float,
+        radius: float,
+        node_multiplier: int
+    ) -> bool:
+
+        # Step 1: Validate parameters
+        start_node = self.primary_nodes[start]
+        goal_node = self.primary_nodes[goal]
+    
+        # Check direct distance first
+        direct_distance = start_node.distance_to(goal_node)
+
+        if direct_distance > max_distance:
+            return False
+
+        if direct_distance <= max_distance:
+            # Check if direct path is valid (no collisions)
+            direct_valid = True
+            for blocker in self.primary_nodes:
+                if self._line_sphere_collision(start_node, goal_node, blocker, radius):
+                    direct_valid = False
+                    break
+        
+            if direct_valid and direct_distance >= min_distance:
+                return True
+        
+
+        # Step 2: Generate helper nodes focused around start and end points
+        num_helper_nodes = len(self.primary_nodes) * node_multiplier
+        helper_nodes = self._generate_prioritized_helpers(start_node, goal_node, radius, num_helper_nodes, max_distance)
+        helper_nodes += [start_node, goal_node]
+
+        # Step 3: Build optimized visibility graph
+        G = self._build_optimized_visibility_graph(helper_nodes, radius, max_distance, start_node, goal_node)
+
+        # Step 4: Pathfinding
+        try:
+            path_length = nx.dijkstra_path_length(G, start_node, goal_node, weight='weight')
+            # Check if path length is within range
+            return min_distance <= path_length <= max_distance
+        except nx.NetworkXNoPath:
+            # No valid path exists
+            return False
+
+    def _is_point_valid(self, point: Node, obstacles: list[Node], radius: float) -> bool:
+        for center in obstacles:
+            if point.distance_to(center) < radius:
+                return False
+        return True
+
+    def _generate_prioritized_helpers(
+        self, 
+        start_node: Node, 
+        goal_node: Node, 
+        radius: float, 
+        max_samples: int, 
+        max_distance: float
+    ) -> list[Node]:
+        """
+        Generate helper nodes prioritizing the areas around start and end points
+        with compact placement to maximize coverage while minimizing node count.
+        """
+        # Calculate midpoint between start and goal
+        midpoint = Node(
+            (start_node.x + goal_node.x) / 2,
+            (start_node.y + goal_node.y) / 2,
+            (start_node.z + goal_node.z) / 2
+        )
+    
+        # Calculate direct distance between start and goal
+        direct_distance = start_node.distance_to(goal_node)
+    
+        # Find obstacles within the relevant search area
+        relevant_obstacles = []
+        extended_search = max_distance * 1.2  # Add a buffer for potential detours
+    
+        for obs in self.primary_nodes:
+            # Check if obstacle is near the path area
+            if (obs.distance_to(start_node) <= extended_search or 
+                obs.distance_to(goal_node) <= extended_search or
+                obs.distance_to(midpoint) <= extended_search):
+                relevant_obstacles.append(obs)
+    
+        if not relevant_obstacles:
+            relevant_obstacles = obstacles
+    
+        # Auto-generate number of samples based on problem constraints
+        path_complexity = min(len(relevant_obstacles), 50)
+        distance_factor = direct_distance / radius
+    
+        auto_samples = min(
+            max_samples,
+            int(10 + path_complexity * 0.5 + distance_factor * 2)
+        )
+    
+        if max_distance > direct_distance * 2:
+            auto_samples = min(max_samples, int(auto_samples * 1.5))
+    
+        auto_samples = max(20, auto_samples)
+        num_samples = auto_samples
+    
+        # Set up bounds for sampling
+        coords = np.array([n.to_tuple() for n in relevant_obstacles])
+        min_bounds = coords.min(axis=0) - radius * 2
+        max_bounds = coords.max(axis=0) + radius * 2
+    
+        # Define regions for compact sampling
+        start_region_radius = min(max_distance * 0.4, direct_distance * 0.6)
+        goal_region_radius = min(max_distance * 0.4, direct_distance * 0.6)
+        middle_region_radius = min(max_distance * 0.6, direct_distance)
+    
+        # Allocate samples to regions
+        start_region_target = num_samples * 0.35
+        goal_region_target = num_samples * 0.35
+        middle_region_target = num_samples * 0.3
+    
+        # Compact placement approach
+        # 1. Use grid-based sampling with spacing close to 2*radius
+        # 2. Perturb grid points slightly to maximize coverage
+        # 3. Accept only valid points
+    
+        helpers = []
+        attempts = 0
+        start_region_nodes = 0
+        goal_region_nodes = 0
+        middle_region_nodes = 0
+    
+        # Grid spacing for compact placement (slightly larger than 2*radius)
+        grid_spacing = radius * 2.2  # Small buffer to ensure minimum separation
+    
+        # Storage for placed points to facilitate compact placement
+        placed_points = []
+        max_attempts = num_samples * 15
+    
+        while (len(helpers) < num_samples and attempts < max_attempts):
+            # Determine which region to sample from
+            if start_region_nodes < start_region_target:
+                center = start_node
+                sampling_radius = start_region_radius
+                region = "start"
+            elif goal_region_nodes < goal_region_target:
+                center = goal_node
+                sampling_radius = goal_region_radius
+                region = "goal"
+            else:
+                center = midpoint
+                sampling_radius = middle_region_radius
+                region = "middle"
+        
+            # Try compact placement - first check if we have existing points
+            if placed_points:
+                reference_point = placed_points[attempts % len(placed_points)]
+
+                golden_ratio = (1 + 5 ** 0.5) / 2
+                theta = (attempts * golden_ratio) % (2 * np.pi)
+                phi = (attempts * golden_ratio * 0.5) % np.pi
+            
+                # Convert to cartesian coordinates on unit sphere
+                dx = np.sin(phi) * np.cos(theta)
+                dy = np.sin(phi) * np.sin(theta)
+                dz = np.cos(phi)
+            
+                # Scale to grid spacing and offset
+                x = reference_point.x + dx * grid_spacing
+                y = reference_point.y + dy * grid_spacing
+                z = reference_point.z + dz * grid_spacing
+            
+                # Ensure within region and bounds
+                dist_to_center = np.sqrt((x - center.x)**2 + (y - center.y)**2 + (z - center.z)**2)
+                if dist_to_center > sampling_radius:
+                    # If outside region radius, place on region boundary in that direction
+                    scale_factor = sampling_radius / dist_to_center
+                    x = center.x + (x - center.x) * scale_factor
+                    y = center.y + (y - center.y) * scale_factor
+                    z = center.z + (z - center.z) * scale_factor
+            
+                # Ensure within global bounds
+                x = max(min_bounds[0], min(max_bounds[0], x))
+                y = max(min_bounds[1], min(max_bounds[1], y))
+                z = max(min_bounds[2], min(max_bounds[2], z))
+            
+                point = Node(x, y, z)
+            else:
+                # No existing points yet, start with biased sampling near center
+                point = self._sample_around_point(center, sampling_radius * 0.5, min_bounds, max_bounds, attempts)
+        
+            # Validate point
+            valid = self._is_point_valid(point, relevant_obstacles, radius)
+        
+            # Also check minimum distance from other helper nodes for compact placement
+            if valid:
+                for existing in helpers:
+                    if point.distance_to(existing) < radius * 2:
+                        valid = False
+                        break
+        
+            if valid:
+                helpers.append(point)
+                placed_points.append(point)
+            
+                # Update region counters
+                if region == "start":
+                    start_region_nodes += 1
+                elif region == "goal":
+                    goal_region_nodes += 1
+                else:
+                    middle_region_nodes += 1
+        
+            attempts += 1
+        
+            # Adaptive adjustment
+            if attempts > max_attempts * 0.7 and len(helpers) < num_samples * 0.5:
+                # If placement is difficult, gradually reduce spacing requirements
+                grid_spacing = max(radius * 1.8, grid_spacing * 0.95)
+            
+                # Also reduce targets
+                num_samples = max(len(helpers) + 5, int(num_samples * 0.8))
+                start_region_target = num_samples * 0.35
+                goal_region_target = num_samples * 0.35
+                middle_region_target = num_samples * 0.3
+    
+        return helpers
+
+    def _sample_around_point(self, center, sampling_radius, min_bounds, max_bounds, attempt):
+        golden_ratio = (1 + 5 ** 0.5) / 2
+        theta = (attempt * golden_ratio) % (2 * np.pi)
+        phi = (attempt * golden_ratio * 0.5) % np.pi
+
+        dx = np.sin(phi) * np.cos(theta)
+        dy = np.sin(phi) * np.sin(theta)
+        dz = np.cos(phi)
+
+        x = center.x + dx * sampling_radius
+        y = center.y + dy * sampling_radius
+        z = center.z + dz * sampling_radius
+
+        x = max(min_bounds[0], min(max_bounds[0], x))
+        y = max(min_bounds[1], min(max_bounds[1], y))
+        z = max(min_bounds[2], min(max_bounds[2], z))
+
+        return Node(x, y, z)
+
+    def _line_sphere_collision(self, p1: Node, p2: Node, sphere_center: Node, sphere_radius: float) -> bool:
+        p1 = np.array(p1.to_tuple())
+        p2 = np.array(p2.to_tuple())
+        c = np.array(sphere_center.to_tuple())
+    
+        # Line segment direction vector
+        d = p2 - p1
+    
+        # Vector from sphere center to first point
+        f = p1 - c
+    
+        # Quadratic equation coefficients: at² + bt + c = 0
+        a = np.dot(d, d)  # Squared length of line segment
+        b = 2 * np.dot(f, d)
+        c_val = np.dot(f, f) - sphere_radius ** 2
+    
+        # Calculate discriminant
+        discriminant = b ** 2 - 4 * a * c_val
+    
+        # No intersection if discriminant is negative
+        if discriminant < 0:
+            return False
+        
+        # Calculate intersection points
+        discriminant = np.sqrt(discriminant)
+        t1 = (-b - discriminant) / (2 * a)
+        t2 = (-b + discriminant) / (2 * a)
+    
+        # Line segment intersects sphere if at least one intersection point
+        # lies on the segment (0 <= t <= 1)
+        return (0 <= t1 <= 1) or (0 <= t2 <= 1)
+
+    def _build_optimized_visibility_graph(
+        self, 
+        helper_nodes: list[Node], 
+        radius: float,
+        max_distance: float,
+        start_node: Node,
+        goal_node: Node
+    ):
+        """Build visibility graph optimized to focus on nodes that might contribute to a valid path"""
+        G = nx.Graph()
+    
+        # Add all nodes to the graph
+        for node in helper_nodes:
+            G.add_node(node)
+    
+        # Calculate relevance of primary nodes (obstacles)
+        relevant_obstacles = []
+        extended_search = max_distance * 1.5  # Add buffer for potential detours
+    
+        for obs in self.primary_nodes:
+            # Check if obstacle is near the path area
+            if (obs.distance_to(start_node) <= extended_search and 
+                obs.distance_to(goal_node) <= extended_search):
+                relevant_obstacles.append(obs)
+    
+        if not relevant_obstacles:
+            relevant_obstacles = primary_nodes
+    
+        # Sort helper nodes by proximity to start and goal
+        sorted_helpers = sorted(
+            helper_nodes,
+            key=lambda node: min(node.distance_to(start_node), node.distance_to(goal_node))
+        )
+    
+        # Connect start and goal to nearby helpers first
+        connect_radius = max_distance * 0.5  # Connect to nodes within this radius
+    
+        # Connect start node to nearby helpers
+        for helper in sorted_helpers:
+            if helper != start_node and helper != goal_node:
+                dist = start_node.distance_to(helper)
+                if dist <= connect_radius:
+                    collision = False
+                    for blocker in relevant_obstacles:
+                        if blocker != start_node and self._line_sphere_collision(start_node, helper, blocker, radius):
+                            collision = True
+                            break
+                    if not collision:
+                        G.add_edge(start_node, helper, weight=dist)
+    
+        # Connect goal node to nearby helpers
+        for helper in sorted_helpers:
+            if helper != start_node and helper != goal_node:
+                dist = goal_node.distance_to(helper)
+                if dist <= connect_radius:
+                    collision = False
+                    for blocker in relevant_obstacles:
+                        if blocker != goal_node and self._line_sphere_collision(goal_node, helper, blocker, radius):
+                            collision = True
+                            break
+                    if not collision:
+                        G.add_edge(goal_node, helper, weight=dist)
+    
+        # Connect other helper nodes, focusing on those closer to start/goal first
+        for i, p1 in enumerate(sorted_helpers):
+            # Skip if already connected to both start and goal
+            if p1 != start_node and p1 != goal_node:
+                # Only check connections with nodes that are within a reasonable distance
+                for j in range(i + 1, len(sorted_helpers)):
+                    p2 = sorted_helpers[j]
+                    # Quick distance check before expensive collision check
+                    dist = p1.distance_to(p2)
+                
+                    # Only connect if they're close enough (but not too close)
+                    if dist <= connect_radius * 1.5:
+                        collision = False
+                        for blocker in relevant_obstacles:
+                            if self._line_sphere_collision(p1, p2, blocker, radius):
+                                collision = True
+                                break
+                        if not collision:
+                            G.add_edge(p1, p2, weight=dist)
+        return G
+
     def predict_crosslinks(self, 
                           pcd: ProteinChainDataset, 
                           residues_1: str, 
@@ -390,12 +761,32 @@ class ProteinStructureDataset:
                           min_length: float, 
                           max_length: float, 
                           linker: Optional[str] = None,
-                          atom_type: str = 'CA'
+                          atom_type: str = 'CA',
+                          direct_path = False,
+                          radius: float = 1.925, # Half of CA-CA distance in peptide bond which is typicall between 3.75 to 3.85
+                          node_multiplier: int = 100
                           ) -> 'CrossLinkDataset':
 
         filtered_atoms = list(filter(lambda atom: atom.type == atom_type, self.atoms))
+
         if len(filtered_atoms) == 0:
             raise ValueError(f'Invalid atom type {atom_type}')
+
+        if self.primary_nodes is None:
+            self.primary_nodes = [atom.node for atom in self.atoms if atom.type == atom_type]
+
+        if node_multiplier < 1:
+            raise ValueError(
+                f'Node multiplier must be greater than 0, got {node_multiplier}')
+
+        if min_length < 0:
+            raise ValueError(
+                f'Min length {min_length} must be greater than 0')
+
+        if max_length < min_length:
+            raise ValueError(
+                f'Max length {max_length} must be greater than min length {min_length}')
+        
     
         def get_all_crosslink_candidates(residues: str) -> List['Atom']:
             residue_chars = list(residues)
@@ -430,16 +821,25 @@ class ProteinStructureDataset:
         atoms_2 = get_all_crosslink_candidates(residues_2)
 
         crosslink_pairs = []  # Using list instead of set to preserve order
-    
+
         for a1 in atoms_1:
             for a2 in atoms_2:
                 # Avoid self-crosslinks (same atom)
                 if a1 is a2:
                     continue
-                
-                distance = a1.distance_to(a2)
-                if min_length <= distance <= max_length:
-                    crosslink_pairs.append((a1, a2))
+                if direct_path:
+                    if min_length <= a1.distance_to(a2) <= max_length:
+                        crosslink_pairs.append((a1, a2))
+                else:
+                    if self._is_path_distance_in_range(
+                        filtered_atoms.index(a1),
+                        filtered_atoms.index(a2),
+                        min_length,
+                        max_length,
+                        radius,
+                        node_multiplier
+                    ):
+                        crosslink_pairs.append((a1, a2))
     
         def get_protein_by_chain(chain: str) -> str:
             for protein, chains in pcd:
@@ -948,7 +1348,6 @@ class CrossLinkDataset:
         
         return common_dataset1, common_dataset2
 
-
 class FastaEntity:
     def __init__(self, header: str, sequence: str, fasta_format: str, remove_parenthesis: bool = False):
         self.raw_header = header
@@ -1107,8 +1506,6 @@ class FastaDataset:
         file_path = os.path.join(folder_path, file_name)
         with open(file_path, "w") as file:
             file.write(text_output)
-        
-        print(f'FastaEntity saved to {file_path}')
 
 
 class DomainEntity:
