@@ -8,6 +8,9 @@ import math
 from dataclasses import dataclass
 import itertools
 import random
+import concurrent.futures
+import multiprocessing
+from functools import partial
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
@@ -754,6 +757,16 @@ class ProteinStructureDataset:
                             G.add_edge(p1, p2, weight=dist)
         return G
 
+    def _check_path_distance_mp(self, args):
+        # Unpack the arguments
+        psd_instance, idx1, idx2, min_length, max_length, radius, node_multiplier = args
+    
+        # Call the instance method
+        result = psd_instance._is_path_distance_in_range(
+            idx1, idx2, min_length, max_length, radius, node_multiplier
+        )
+        return (idx1, idx2, result)
+
     def predict_crosslinks(self, 
                           pcd: ProteinChainDataset, 
                           residues_1: str, 
@@ -764,7 +777,8 @@ class ProteinStructureDataset:
                           atom_type: str = 'CA',
                           direct_path = False,
                           radius: float = 1.925, # Half of CA-CA distance in peptide bond which is typicall between 3.75 to 3.85
-                          node_multiplier: int = 100
+                          node_multiplier: int = 100,
+                          num_processes: int = 1 
                           ) -> 'CrossLinkDataset':
 
         filtered_atoms = list(filter(lambda atom: atom.type == atom_type, self.atoms))
@@ -786,9 +800,13 @@ class ProteinStructureDataset:
         if max_length < min_length:
             raise ValueError(
                 f'Max length {max_length} must be greater than min length {min_length}')
-        
     
+        # Set reasonable process count based on system
+        if num_processes <= 0:
+            num_processes = max(1, multiprocessing.cpu_count())
+
         def get_all_crosslink_candidates(residues: str) -> List['Atom']:
+            # Same as original implementation
             residue_chars = list(residues)
             atoms = []
             for _, chains in pcd:
@@ -816,38 +834,55 @@ class ProteinStructureDataset:
                                 if atom.chain == chain and atom.type == atom_type and atom.residue == res:
                                     atoms.append(atom)
             return atoms
-    
+
         atoms_1 = get_all_crosslink_candidates(residues_1)
         atoms_2 = get_all_crosslink_candidates(residues_2)
 
         crosslink_pairs = []  # Using list instead of set to preserve order
 
-        for a1 in atoms_1:
-            for a2 in atoms_2:
-                # Avoid self-crosslinks (same atom)
-                if a1 is a2:
-                    continue
-                if direct_path:
+        if direct_path:
+            # Direct path calculation (not parallelized as it's already fast)
+            for a1 in atoms_1:
+                for a2 in atoms_2:
+                    # Avoid self-crosslinks (same atom)
+                    if a1 is a2:
+                        continue
                     if min_length <= a1.distance_to(a2) <= max_length:
                         crosslink_pairs.append((a1, a2))
-                else:
-                    if self._is_path_distance_in_range(
-                        filtered_atoms.index(a1),
-                        filtered_atoms.index(a2),
-                        min_length,
-                        max_length,
-                        radius,
-                        node_multiplier
-                    ):
-                        crosslink_pairs.append((a1, a2))
-    
+        else:
+            # Path distance calculation (multi-process version)
+            # Generate all pairs to evaluate and convert to indices
+            pairs_to_check = []
+            for a1 in atoms_1:
+                for a2 in atoms_2:
+                    # Avoid self-crosslinks (same atom)
+                    if a1 is not a2:
+                        idx1 = filtered_atoms.index(a1)
+                        idx2 = filtered_atoms.index(a2)
+                        # Create input tuple with all parameters needed
+                        pairs_to_check.append((self, idx1, idx2, min_length, max_length, radius, node_multiplier))
+        
+            # Process in parallel using Pool
+            pool = multiprocessing.Pool(processes=num_processes)
+            try:
+                # Use map to parallelize
+                results = pool.map(self._check_path_distance_mp, pairs_to_check, chunksize=10)
+            
+                # Filter positive results and convert back to atom pairs
+                for idx1, idx2, is_in_range in results:
+                    if is_in_range:
+                        crosslink_pairs.append((filtered_atoms[idx1], filtered_atoms[idx2]))
+            finally:
+                pool.close()
+                pool.join()
+
         def get_protein_by_chain(chain: str) -> str:
             for protein, chains in pcd:
                 for ch in chains:
                     if ch == chain:
                         return protein
             raise ValueError(f'Undefined protein chain {chain}')
-    
+
         crosslinks = []
         for a1, a2 in crosslink_pairs:
             crosslinks.append(CrossLinkEntity(
@@ -865,8 +900,8 @@ class ProteinStructureDataset:
                 'Prediction',
                 linker
             ))
-    
-        return CrossLinkDataset(crosslinks)
+        result = CrossLinkDataset(crosslinks)
+        return result.blank_replica_counter()
         
     def __iter__(self):
         return iter(self.atoms)
