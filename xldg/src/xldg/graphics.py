@@ -15,6 +15,11 @@ from matplotlib_venn import venn3
 
 from xldg.core import CrossLinkDataset, FastaDataset, DomainDataset
 
+def _valid_hex_color(color) -> str:
+    hex_color_pattern = r'^#([0-9A-Fa-f]{3}){1,2}$'
+    if re.match(hex_color_pattern, color):
+        return color
+    raise ValueError(f'ERROR! Invalid hex color: {color}')
 
 @dataclass
 class CircosConfig:
@@ -314,12 +319,6 @@ class Circos:
                    homotypic_xl_color = '#ed2b21', 
                    general_xl_color = '#7d8082') -> None:
 
-        def _valid_hex_color(color) -> str:
-            hex_color_pattern = r'^#([0-9A-Fa-f]{3}){1,2}$'
-            if re.match(hex_color_pattern, color):
-                return color
-            raise ValueError(f'ERROR! Invalid hex color: {color}')
-
         self.heterotypic_intraprotein_xl_color = _valid_hex_color(heterotypic_intraprotein_xl_color)
         self.heterotypic_interprotein_xl_color = _valid_hex_color(heterotypic_interprotein_xl_color)
         self.homotypic_xl_color = _valid_hex_color(homotypic_xl_color)
@@ -346,7 +345,7 @@ class Venn2:
         self.config = copy.deepcopy(config)
         self.first_color = '#9AE66E'  # pastel green
         self.second_color = '#FAF278'  # pastel yellow
-        self.overlap = '#87D5F8'  # pastel blue
+        self.overlap_color = '#87D5F8'  # pastel blue
         
         self.fig = plt.figure(figsize=self.config.figsize)
         
@@ -358,18 +357,21 @@ class Venn2:
     def set_colors(self, 
                    first_color = '#9AE66E', 
                    second_color = '#FAF278', 
-                   overlap = '#87D5F8'):
+                   overlap_color = '#87D5F8'):
 
-        self.first_color = first_color
-        self.second_color = second_color
-        self.overlap = overlap
+        self.first_color = _valid_hex_color(first_color)
+        self.second_color = _valid_hex_color(second_color)
+        self.overlap_color = _valid_hex_color(overlap_color)
         
     def save(self, path: str):
-        self.venn.get_patch_by_id('10').set_color(self.first_color) 
-        self.venn.get_patch_by_id('01').set_color(self.second_color)
+        if self.venn.get_patch_by_id('10') is not None:
+            self.venn.get_patch_by_id('10').set_color(self.first_color) 
 
-        if self.venn.get_patch_by_id('11') != None:
-            self.venn.get_patch_by_id('11').set_color(self.overlap) 
+        if self.venn.get_patch_by_id('01') is not None:
+            self.venn.get_patch_by_id('01').set_color(self.second_color)
+
+        if self.venn.get_patch_by_id('11') is not None:
+            self.venn.get_patch_by_id('11').set_color(self.overlap_color) 
         
         # Label the regions with the number of elements
         for subset in ('10', '01', '11'):
@@ -422,30 +424,36 @@ class Venn3:
                    overlap_13 = '#C3B1E1',    # pastel purple
                    overlap_23 = '#FFDAC1',    # pastel orange
                    overlap_123 = '#FFFFD8'):  # pastel light yellow
-        self.first_color = first_color
-        self.second_color = second_color
-        self.third_color = third_color
-        self.overlap_12 = overlap_12
-        self.overlap_13 = overlap_13
-        self.overlap_23 = overlap_23
-        self.overlap_123 = overlap_123
+
+        self.first_color = _valid_hex_color(first_color)
+        self.second_color = _valid_hex_color(second_color)
+        self.third_color = _valid_hex_color(third_color)
+        self.overlap_12 = _valid_hex_color(overlap_12)
+        self.overlap_13 = _valid_hex_color(overlap_13)
+        self.overlap_23 = _valid_hex_color(overlap_23)
+        self.overlap_123 = _valid_hex_color(overlap_123)
         
     def save(self, path: str):
         # Set colors for each region
-        self.venn.get_patch_by_id('100').set_color(self.first_color)
-        self.venn.get_patch_by_id('010').set_color(self.second_color)
-        self.venn.get_patch_by_id('001').set_color(self.third_color)
+        if self.venn.get_patch_by_id('100') is not None:
+            self.venn.get_patch_by_id('100').set_color(self.first_color)
 
-        if self.venn.get_patch_by_id('110') != None:
+        if self.venn.get_patch_by_id('010') is not None:
+            self.venn.get_patch_by_id('010').set_color(self.second_color)
+
+        if self.venn.get_patch_by_id('001') is not None:
+            self.venn.get_patch_by_id('001').set_color(self.third_color)
+
+        if self.venn.get_patch_by_id('110') is not None:
             self.venn.get_patch_by_id('110').set_color(self.overlap_12)
 
-        if self.venn.get_patch_by_id('101') != None:
+        if self.venn.get_patch_by_id('101') is not None:
             self.venn.get_patch_by_id('101').set_color(self.overlap_13)
 
-        if self.venn.get_patch_by_id('011') != None:
+        if self.venn.get_patch_by_id('011') is not None:
             self.venn.get_patch_by_id('011').set_color(self.overlap_23)
 
-        if self.venn.get_patch_by_id('111') != None:
+        if self.venn.get_patch_by_id('111') is not None:
             self.venn.get_patch_by_id('111').set_color(self.overlap_123)
         
         # Label the regions with the number of elements

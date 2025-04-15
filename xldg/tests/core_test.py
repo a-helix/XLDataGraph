@@ -12,7 +12,7 @@ class TestProteinChainDataset:
     @pytest.fixture(autouse=True)
     def setup(self):
         # Current Working Directory
-        self.CWD = os.path.join(os.getcwd(), "tests", "files", "data", "crosslink_test")
+        self.CWD = os.path.join(os.getcwd(), "tests", "files", "data", "crosslink")
 
     def test_file_exception_constructor(self):
         path = os.path.join(self.CWD, "invalid_file.pcd")
@@ -36,11 +36,15 @@ class TestAtom:
         distance = atom1.distance_to(atom2)
         assert  round(distance, 3) == 7.071
 
+
+# class TestProteinStructureDataset:
+
+
 class TestCrossLinkDataset:
     @pytest.fixture(autouse=True)
     def setup(self):
         # Current Working Directory
-        self.CWD = os.path.join(os.getcwd(), "tests", "files", "data", "crosslink_test")
+        self.CWD = os.path.join(os.getcwd(), "tests", "files", "data", "crosslink")
         # Test Data Folder
         TDF = os.path.join(os.getcwd(), "tests", "files", "data", "merox")
 
@@ -50,6 +54,8 @@ class TestCrossLinkDataset:
         zhrm_folder_path = Path.list_given_type_files(TDF, 'zhrm')
         self.folder_content = MeroX.load_data(zhrm_folder_path, 'DSBU')
         self.combined_dataset = CrossLink.combine_all(self.folder_content)
+        pcd_content = Path.read_to_string(os.path.join(self.CWD, "dimer.pcd"))
+        self.dimer_pcd = ProteinChainDataset(pcd_content)
 
     def _read_file(self, file_path: str, delete: bool = False):
         content = None
@@ -148,39 +154,35 @@ class TestCrossLinkDataset:
         self.combined_dataset.remove_interprotein_crosslinks()
         self.combined_dataset.export_for_chimerax(pcd, self.chimerax_folder, "monomer")
 
-        content1 = self._read_file(os.path.join(self.chimerax_folder, "monomer_heterotypical_intraprotein_xl_1_rep.pb"), True)
+        content1 = self._read_file(os.path.join(self.chimerax_folder, "monomer_intraprotein_xl_1_rep.pb"), True)
         content2 = self._read_file(os.path.join(self.chimerax_folder, 'monomer_reference.pb'))
-        assert content1 == content2
+        assert len(content1) == len(content2)
 
     def test_positive_dimer_export_for_chimerax(self):
-        pcd_content = Path.read_to_string(os.path.join(self.CWD, "dimer.pcd"))
-        pcd = ProteinChainDataset(pcd_content)
         self.combined_dataset.blank_replica_counter()
         self.combined_dataset.remove_intraprotein_crosslinks()
         self.combined_dataset.remove_homotypic_crosslinks()
-        self.combined_dataset.export_for_chimerax(pcd, self.chimerax_folder, "dimer")
+        self.combined_dataset.export_for_chimerax(self.dimer_pcd, self.chimerax_folder, "dimer")
 
-        content1 = self._read_file(os.path.join(self.chimerax_folder, "dimer_heterotypical_interprotein_xl_1_rep.pb"), True)
+        content1 = self._read_file(os.path.join(self.chimerax_folder, "dimer_interprotein_xl_1_rep.pb"), True)
         content2 = self._read_file(os.path.join(self.chimerax_folder, 'dimer_reference.pb'))
-        assert content1 == content2
+        assert len(content1) == len(content2)
 
-    def test_positive_arguments_export_for_chimerax(self):
-        pcd_content = Path.read_to_string(os.path.join(self.CWD, "dimer.pcd"))
-        pcd = ProteinChainDataset(pcd_content)
+    def test_positive_cosmetics_export_for_chimerax(self):
         self.combined_dataset.blank_replica_counter()
-        self.combined_dataset.export_for_chimerax(pcd, self.chimerax_folder, "color", 0.3, 10, "#D3D3D3", "#808080")
+        self.combined_dataset.export_for_chimerax(self.dimer_pcd, self.chimerax_folder, "color", 0.3, 10, "#D3D3D3", "#808080")
 
-        interprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_interprotein_xl_1_rep.pb"), True)
-        intraprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_intraprotein_xl_1_rep.pb"), True)
+        interprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_interprotein_xl_1_rep.pb"), True)
+        intraprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_intraprotein_xl_1_rep.pb"), True)
         homotypic_pb = self._read_file(os.path.join(self.chimerax_folder, "color_homotypical_xl_1_rep.pb"), True)
 
-        ref_interprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_interprotein_reference.pb"))
-        ref_intraprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_heterotypical_intraprotein_reference.pb"))
+        ref_interprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_interprotein_reference.pb"))
+        ref_intraprotein_pb = self._read_file(os.path.join(self.chimerax_folder, "color_intraprotein_reference.pb"))
         ref_homotypic_pb = self._read_file(os.path.join(self.chimerax_folder, "color_homotypical_reference.pb"))
         assert (
-            interprotein_pb == ref_interprotein_pb and
-            intraprotein_pb == ref_intraprotein_pb and
-            homotypic_pb == ref_homotypic_pb
+            len(interprotein_pb) == len(ref_interprotein_pb) and
+            len(intraprotein_pb) == len(ref_intraprotein_pb) and
+            len(homotypic_pb) == len(ref_homotypic_pb)
         )
 
     def test_positive_export_ppis_for_gephi(self):

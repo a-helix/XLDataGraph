@@ -1,5 +1,5 @@
 ﻿from dataclasses import dataclass
-from typing import List, Tuple, Dict, Set, Iterator, Union, Optional
+from typing import List, Tuple, Dict, Set, Iterator, Optional
 import os
 import sys
 import re
@@ -18,6 +18,7 @@ from xml.dom import minidom
 import numpy as np
 from scipy.spatial import distance
 import networkx as nx
+
 
 class ProteinChainDataset:
     def __init__(self, pcd_data: str):
@@ -170,7 +171,7 @@ class CrossLinkEntity:
             return hash((self.protein_2, self.num_site_2, self.protein_1, self.num_site_1))
     
     def __str__(self):
-        return f'{self.protein_1},{self.num_site_1},{self.protein_2},{self.num_site_2}'
+        return f'{self.protein_1},{self.num_site_1},{self.protein_2},{self.num_site_2},{self.is_interprotein},{self.is_homotypical}'
 
 @dataclass(frozen=True)
 class Node:
@@ -482,9 +483,6 @@ class ProteinStructureDataset:
                 obs.distance_to(midpoint) <= extended_search):
                 relevant_obstacles.append(obs)
     
-        if not relevant_obstacles:
-            relevant_obstacles = obstacles
-    
         # Auto-generate number of samples based on problem constraints
         path_complexity = min(len(relevant_obstacles), 50)
         distance_factor = direct_distance / radius
@@ -698,9 +696,6 @@ class ProteinStructureDataset:
                 obs.distance_to(goal_node) <= extended_search):
                 relevant_obstacles.append(obs)
     
-        if not relevant_obstacles:
-            relevant_obstacles = primary_nodes
-    
         # Sort helper nodes by proximity to start and goal
         sorted_helpers = sorted(
             helper_nodes,
@@ -771,11 +766,11 @@ class ProteinStructureDataset:
                           pcd: ProteinChainDataset, 
                           residues_1: str, 
                           residues_2: str, 
-                          min_length: float, 
-                          max_length: float, 
+                          min_length: float = 0, 
+                          max_length: float = sys.maxsize, 
                           linker: Optional[str] = None,
                           atom_type: str = 'CA',
-                          direct_path = False,
+                          direct_path = True,
                           radius: float = 1.925, # Half of CA-CA distance in peptide bond which is typicall between 3.75 to 3.85
                           node_multiplier: int = 100,
                           num_processes: int = 1 
@@ -1199,15 +1194,15 @@ class CrossLinkDataset:
                         for c2 in chains:
                             _clasify_crosslink(crosslink, buffer_heterotypical_intra_xl, outliers_buffer_heterotypical_intra_xl, c1, c2)
 
-            # Writing to files
-            if protein_structure:
-                _write_to_pb_file(outliers_buffer_heterotypical_inter_xl, f"outliers_{file_name}_heterotypical_interprotein_xl_{xl_frequency}_rep.pb")
-                _write_to_pb_file(outliers_buffer_heterotypical_intra_xl, f"outliers_{file_name}_heterotypical_intraprotein_xl_{xl_frequency}_rep.pb")
-                _write_to_pb_file(outliers_buffer_homotypical_xl, f"outliers_{file_name}_homotypical_xl_{xl_frequency}_rep.pb")
+        # Writing to files
+        if protein_structure:
+            _write_to_pb_file(outliers_buffer_heterotypical_inter_xl, f"outliers_{file_name}_interprotein_xl_{xl_frequency}_rep.pb")
+            _write_to_pb_file(outliers_buffer_heterotypical_intra_xl, f"outliers_{file_name}_intraprotein_xl_{xl_frequency}_rep.pb")
+            _write_to_pb_file(outliers_buffer_homotypical_xl, f"outliers_{file_name}_homotypical_xl_{xl_frequency}_rep.pb")
 
-            _write_to_pb_file(buffer_heterotypical_inter_xl, f"{file_name}_heterotypical_interprotein_xl_{xl_frequency}_rep.pb")
-            _write_to_pb_file(buffer_heterotypical_intra_xl, f"{file_name}_heterotypical_intraprotein_xl_{xl_frequency}_rep.pb")
-            _write_to_pb_file(buffer_homotypical_xl, f"{file_name}_homotypical_xl_{xl_frequency}_rep.pb")
+        _write_to_pb_file(buffer_heterotypical_inter_xl, f"{file_name}_interprotein_xl_{xl_frequency}_rep.pb")
+        _write_to_pb_file(buffer_heterotypical_intra_xl, f"{file_name}_intraprotein_xl_{xl_frequency}_rep.pb")
+        _write_to_pb_file(buffer_homotypical_xl, f"{file_name}_homotypical_xl_{xl_frequency}_rep.pb")
 
     def export_ppis_for_gephi(
         self, 

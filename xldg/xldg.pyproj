@@ -90,8 +90,6 @@
     <Content Include="tests\files\data\fasta\fasta_1.fasta" />
     <Content Include="tests\files\data\fasta\fasta_2.fasta" />
     <Content Include="tests\files\data\fasta\fasta_combined.fasta" />
-    <Content Include="tests\files\data\crosslink_test\chimerax\color_heterotypical_interprotein_reference.pb" />
-    <Content Include="tests\files\data\crosslink_test\chimerax\color_heterotypical_intraprotein_reference.pb" />
     <Content Include="tests\files\data\crosslink_test\chimerax\color_homotypical_reference.pb" />
     <Content Include="tests\files\data\crosslink_test\chimerax\dimer_reference.pb" />
     <Content Include="tests\files\data\crosslink_test\chimerax\monomer_reference.pb" />

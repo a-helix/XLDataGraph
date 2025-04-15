@@ -1,13 +1,13 @@
 import pytest
 import os
 import re
-from xldg.data import Path, Fasta, MeroX, Domain, CrossLink, Util
+from xldg.data import Path, Fasta, MeroX, Domain, CrossLink, ProteinStructure, Util
 
 class TestPath:
     @pytest.fixture(autouse=True)
     def setup(self):
         # Current Working Directory
-        self.CWD = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'path_test')
+        self.CWD = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'path')
         self.fasta_files = Path.list_given_type_files(self.CWD, '.fasta')
         self.txt_reference  = [os.path.join(self.CWD, 'abcd1234_file1.txt'),
                                os.path.join(self.CWD, 'abcd1234_file2.txt'),
@@ -156,7 +156,7 @@ class TestCrossLink:
     @pytest.fixture(autouse=True)
     def setup(self):
         # Current Working Directory
-        self.CWD = os.path.join(os.getcwd(), "tests", "files", "data", "crosslink_test")
+        self.CWD = os.path.join(os.getcwd(), "tests", "files", "data", "crosslink")
         ZHRM = os.path.join(os.getcwd(), "tests", "files", "data", "merox")
         self.chimerax_folder = os.path.join(self.CWD, 'chimerax')
 
@@ -330,6 +330,22 @@ class TestCrossLink:
                 raise ValueError("Combined elements are not the same")
 
         assert len(combined_dataset) == len(first_dataset)
+
+
+class TestProteinStructure:
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        # Current Working Directory
+        self.CWD = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'structure')
+
+    def test_positive_load_data(self):
+        bsa_cif_path = os.path.join(self.CWD, 'BSA.cif')
+        bsa_cif_structure = ProteinStructure.load_data(bsa_cif_path)
+
+        bsa_pdb_path = os.path.join(self.CWD, 'BSA.pdb')
+        bsa_pdb_structure = ProteinStructure.load_data(bsa_pdb_path)
+        assert len(bsa_pdb_structure) == len(bsa_cif_structure) 
+
 
 class TestUtil:
     def test_positive_generate_list_of_integers(self):
