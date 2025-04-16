@@ -15,11 +15,13 @@ from matplotlib_venn import venn3
 
 from xldg.core import CrossLinkDataset, FastaDataset, DomainDataset
 
+
 def _valid_hex_color(color) -> str:
     hex_color_pattern = r'^#([0-9A-Fa-f]{3}){1,2}$'
     if re.match(hex_color_pattern, color):
         return color
-    raise ValueError(f'ERROR! Invalid hex color: {color}')
+    raise ValueError(f'Invalid hex color: {color}')
+
 
 @dataclass
 class CircosConfig:
@@ -99,7 +101,7 @@ class Circos:
      
     def save(self, path: str) -> None:
         if len(self.xls) == 0:
-            print(f'WARNING: No CrossLinkEntitys detected! Aborted save to {path}')
+            print(f'WARNING: No CrossLinkEntities detected! Aborted save to {path}')
             return
 
         folder_path = os.path.dirname(path)
@@ -176,7 +178,7 @@ class Circos:
             track = sector.add_track((92, 100))
             track.axis(fc = self.prot_colors[sector.name])
             if self.config.plot_protein_ids:
-                sector.text(sector.name, color = '#3A3B3C', r = 110, size = self.config.prot_font_size)
+                sector.text(sector.name, color = '#3A3B3C', r = 110, size=self.config.prot_font_size)
 
             if self.domains != None:
                 for domain in self.domains:
@@ -186,7 +188,7 @@ class Circos:
                     track2.rect(domain.start, domain.end, fc=domain.color)
             
             track._start += 1 # Remove zero lable of the plot
-            track.xticks_by_interval(self.config.label_interval, label_size = self.config.ruler_font_size)
+            track.xticks_by_interval(self.config.label_interval, label_size=self.config.ruler_font_size)
             track._start -= 1
 
     def _plot_xls(self) -> None:
@@ -313,11 +315,13 @@ class Circos:
         if self.config.title is not None:    
             self.fig.text(0.5, 1.05, self.config.title, ha='center', va='center', fontsize=self.config.title_font_size)
     
-    def set_colors(self, 
-                   heterotypic_intraprotein_xl_color = '#21a2ed', 
-                   heterotypic_interprotein_xl_color = '#00008B', 
-                   homotypic_xl_color = '#ed2b21', 
-                   general_xl_color = '#7d8082') -> None:
+    def set_colors(
+                  self, 
+                  heterotypic_intraprotein_xl_color = '#21a2ed', 
+                  heterotypic_interprotein_xl_color = '#00008B', 
+                  homotypic_xl_color = '#ed2b21', 
+                  general_xl_color = '#7d8082'
+                  ) -> None:
 
         self.heterotypic_intraprotein_xl_color = _valid_hex_color(heterotypic_intraprotein_xl_color)
         self.heterotypic_interprotein_xl_color = _valid_hex_color(heterotypic_interprotein_xl_color)
@@ -334,6 +338,7 @@ class VennConfig:
     title_font: int = 16
     legend_font: int = 16
     figsize: Tuple[float, float] = (9, 9)
+
 
 class Venn2:
     def __init__(self,

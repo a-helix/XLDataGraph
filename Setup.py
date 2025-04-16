@@ -2,12 +2,12 @@ from setuptools import setup, find_packages
 
 setup(
     name='xldg',
-    version='0.2.2',
-    description='A Python library for protein-protein interaction analysis',
+    version='0.3.0',
+    description='"XLDataGraph is a library for crosslinking data analysis and visualization.',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     author='a-helix',
-    author_email='your.email@example.com',
+    author_email='sorokin.biochemistry@gmail.com',
     url='https://github.com/a-helix/XLDataGraph',
     packages=find_packages(where='xldg', exclude=['tests*']),
     package_dir={'': 'xldg/src'},

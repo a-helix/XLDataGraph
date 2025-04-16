@@ -50,7 +50,7 @@ class Path:
 
         # Check if the extension is in the expected formats
         if extension not in expected_formats:
-            raise ValueError(f"Invalid file format. Expected {', '.join(expected_formats).upper()}, got {extension.upper()}")
+            raise ValueError(f'Invalid file format. Expected {", ".join(sorted(expected_formats)).upper()}, got {extension.upper()}')
 
         return extension
 
@@ -62,9 +62,15 @@ class Path:
                 string_buffer += line
         return string_buffer
 
+
 class Fasta:
     @staticmethod
-    def load_data(path: Union[str, List[str]], fasta_format: str, remove_parenthesis: bool = False) -> 'FastaDataset':
+    def load_data(
+        path: Union[str, List[str]], 
+        fasta_format: str, 
+        remove_parenthesis: bool = False
+        ) -> 'FastaDataset':
+
         if isinstance(path, str):
             path = [path] 
         
@@ -75,7 +81,7 @@ class Fasta:
             Path.confirm_file_format(file_path, 'fasta', 'fas') 
             all_contents.append(Path.read_to_string(file_path)) 
 
-        combined_content = "\n".join(all_contents)  
+        combined_content = '\n'.join(all_contents)  
 
         return FastaDataset(combined_content, fasta_format, remove_parenthesis)
 
@@ -83,6 +89,7 @@ class Fasta:
     def filter_by_crosslinks(fasta: FastaDataset, crosslinks: CrossLinkDataset) -> FastaDataset:
         fasta_copy = copy.deepcopy(fasta)
         return fasta_copy.filter_by_crosslinks(fasta, crosslinks)
+
 
 class Domain:
     @staticmethod
@@ -97,12 +104,17 @@ class Domain:
             Path.confirm_file_format(file_path, 'dmn') 
             all_contents.append(Path.read_to_string(file_path)) 
 
-        combined_content = "\n".join(all_contents)  
+        combined_content = '\n'.join(all_contents)  
         return DomainDataset(combined_content)
+
 
 class MeroX:
     @staticmethod
-    def load_data(path: Union[str, List[str]], linker: Optional[str] = None) -> Union['CrossLinkDataset', List['CrossLinkDataset']]:
+    def load_data(
+        path: Union[str, List[str]], 
+        linker: Optional[str] = None
+        ) -> Union['CrossLinkDataset', List['CrossLinkDataset']]:
+
         def process_file(file_path: str) -> 'CrossLinkDataset':
             Path.validate_file_existence(file_path)
             Path.confirm_file_format(file_path, 'zhrm')
@@ -126,6 +138,7 @@ class MeroX:
             return [process_file(file) for file in path]
         else:
             return process_file(path) 
+
 
 class CrossLink:
     @staticmethod
@@ -154,7 +167,7 @@ class CrossLink:
 
     @staticmethod
     def filter_by_replica(
-        dataset: Union['CrossLinkDataset', List['CrossLinkDataset']], 
+        dataset: Union['CrossLinkDataset', List['CrossLinkDataset']],
         min_replica: int = 0, 
         max_replica: int = sys.maxsize
     ) -> Union['CrossLinkDataset', List['CrossLinkDataset']]:
@@ -178,7 +191,7 @@ class CrossLink:
 
     @staticmethod
     def blank_replica(
-        dataset: Union['CrossLinkDataset', List['CrossLinkDataset']], 
+        dataset: Union['CrossLinkDataset', List['CrossLinkDataset']]
     ) -> Union['CrossLinkDataset', List['CrossLinkDataset']]:
 
         dataset = copy.deepcopy(dataset)
@@ -197,7 +210,7 @@ class CrossLink:
 
     @staticmethod
     def remove_interprotein(
-        dataset: Union['CrossLinkDataset', List['CrossLinkDataset']], 
+        dataset: Union['CrossLinkDataset', List['CrossLinkDataset']]
     ) -> Union['CrossLinkDataset', List['CrossLinkDataset']]:
 
         dataset = copy.deepcopy(dataset)
@@ -216,7 +229,7 @@ class CrossLink:
      
     @staticmethod
     def remove_intraprotein(
-        dataset: Union['CrossLinkDataset', List['CrossLinkDataset']], 
+        dataset: Union['CrossLinkDataset', List['CrossLinkDataset']]
     ) -> Union['CrossLinkDataset', List['CrossLinkDataset']]:
 
         dataset = copy.deepcopy(dataset)
@@ -235,7 +248,7 @@ class CrossLink:
 
     @staticmethod
     def remove_homotypic(
-        dataset: Union['CrossLinkDataset', List['CrossLinkDataset']], 
+        dataset: Union['CrossLinkDataset', List['CrossLinkDataset']]
     ) -> Union['CrossLinkDataset', List['CrossLinkDataset']]:
 
         dataset = copy.deepcopy(dataset)
@@ -287,9 +300,9 @@ class CrossLink:
         last_dataset_index = len(dataset_list) - 1
 
         if biggest_index > len(dataset_list):
-            raise IndexError(f"Index {biggest_index} out of given dataset_list range 0 to {last_dataset_index}")
+            raise IndexError(f'Index {biggest_index} out of given dataset_list range 0 to {last_dataset_index}')
         if smallest_index < 0:
-            raise IndexError(f"Index {smallest_index} out of given dataset_list range 0 to {last_dataset_index}")
+            raise IndexError(f'Index {smallest_index} out of given dataset_list range 0 to {last_dataset_index}')
 
         buffer = None
         for x in indexes:
@@ -340,6 +353,6 @@ class Util:
 
         for start, end in diapason:
             if start > end:
-                raise ValueError(f"Start value {start} is greater than end value {end}")
+                raise ValueError(f'Start value {start} is greater than end value {end}')
             custom_list.extend(range(start, end + 1))
         return custom_list

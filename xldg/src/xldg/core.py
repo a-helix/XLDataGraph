@@ -26,14 +26,13 @@ class ProteinChainDataset:
         self._assign_pcds(pcd_data)
 
     def _assign_pcds(self, pcd_data: str) -> None:
-        for line in pcd_data.strip().split("\n"):
-            splited_line = line.strip().split(",")
+        for line in pcd_data.strip().split('\n'):
+            splited_line = line.strip().split(',')
 
             if len(splited_line) < 2:
-                raise ValueError(f"Wrong data format in provided input {pcd_data}")
+                raise ValueError(f'Wrong data format in provided input {pcd_data}')
 
-            self.pcds[splited_line[0]] = [item.replace(" ", "") for item in splited_line[1:]]
-
+            self.pcds[splited_line[0]] = [item.replace(' ', '') for item in splited_line[1:]]
 
     def __len__(self):
         return len(self.pcds)
@@ -47,6 +46,7 @@ class ProteinChainDataset:
     def __next__(self):
         return next(iter(self.pcds.items()))
 
+
 class CrossLinkEntity:
     def _remove_text_in_brackets(self, s: str) -> str:
         pattern = r'\(.*?\)'
@@ -54,7 +54,8 @@ class CrossLinkEntity:
         return cleaned_string
 
     def _initialize_merox_xl(self):
-        self.protein_1 = self._remove_text_in_brackets(self.protein_1).replace('  ', ' ') #Fix for a strange Merox assignment
+        #Fix for a strange Merox assignment
+        self.protein_1 = self._remove_text_in_brackets(self.protein_1).replace('  ', ' ')
         self.from_1 = int(self.from_1)
         self.to_1 = int(self.to_1)
         self.num_site_1 = self.from_1 + int(self.site_1[1:]) - 1
@@ -63,7 +64,8 @@ class CrossLinkEntity:
         if self.num_site_1 <= 0:
             self.num_site_1 = 1
 
-        self.protein_2 = self._remove_text_in_brackets(self.protein_2).replace('  ', ' ') #Fix for a strange Merox assignment
+        #Fix for a strange Merox assignment
+        self.protein_2 = self._remove_text_in_brackets(self.protein_2).replace('  ', ' ')
         self.from_2 = int(self.from_2)
         self.to_2 = int(self.to_2)
         self.num_site_2 =  self.from_2 + int(self.site_2[1:]) - 1
@@ -138,7 +140,7 @@ class CrossLinkEntity:
         reverse_match = None
         if not isinstance(other, CrossLinkEntity):
             raise ValueError(
-                "Cannot compare CrossLinkEntity with non-CrossLinkEntity object")
+                'Cannot compare CrossLinkEntity with non-CrossLinkEntity object')
 
         if self.software == 'Prediction' or other.software == 'Prediction':
             direct_match = (self.protein_1 == other.protein_1 and
@@ -173,9 +175,10 @@ class CrossLinkEntity:
     def __str__(self):
         return f'{self.protein_1},{self.num_site_1},{self.protein_2},{self.num_site_2},{self.is_interprotein},{self.is_homotypical}'
 
+
 @dataclass(frozen=True)
 class Node:
-    """3D point in space with hashable coordinates"""
+    '''3D point in space with hashable coordinates'''
     x: float
     y: float
     z: float
@@ -187,6 +190,7 @@ class Node:
 
     def to_tuple(self):
         return (self.x, self.y, self.z)
+
 
 class Atom:
     def __init__(self, number: int, residue: str, type: str, chain: str, x: float, y: float, z: float):
@@ -224,6 +228,7 @@ class Atom:
         return (f'{self.number}\t{self.residue}\t{self.type}\t{self.chain}\t'
                 f'{self.node.x:.3f}\t{self.node.y:.3f}\t{self.node.z:.3f}')
 
+
 class ProteinStructureDataset:
     def __init__(self, file_content: str, format: str):
         self.atoms: List[Atom] = []
@@ -234,7 +239,7 @@ class ProteinStructureDataset:
         elif format == 'cif':
             self._parse_cif(file_content)
         else:
-            raise ValueError("Unsupported file format. Only .pdb and .cif are supported.")
+            raise ValueError('Unsupported file format. Only .pdb and .cif formats can be used')
 
     def _three_to_one_letter_code(self, three_letter_code):
         aa_dict = {
@@ -275,7 +280,7 @@ class ProteinStructureDataset:
         if code in aa_dict:
             return aa_dict[code]
         else:
-            raise ValueError(f"Unknown three-letter amino acid code: {three_letter_code}")
+            raise ValueError(f'Unknown three-letter amino acid code: {three_letter_code}')
 
     def _parse_pdb(self, content: str):
         for line in content.split('\n'):
@@ -392,18 +397,17 @@ class ProteinStructureDataset:
                             z = z
                         ))
                     except (ValueError, KeyError) as e:
-                        print(f"Error parsing CIF atom entry: {e}")
+                        print(f'Error parsing CIF atom entry: {e}')
             i += 1
 
-    def _is_path_distance_in_range(
-        self,
-        start: int,
-        goal: int,
-        min_distance: float,
-        max_distance: float,
-        radius: float,
-        node_multiplier: int
-    ) -> bool:
+    def _is_path_distance_in_range(self,
+                                   start: int,
+                                   goal: int,
+                                   min_distance: float,
+                                   max_distance: float,
+                                   radius: float,
+                                   node_multiplier: int
+                                   ) -> bool:
 
         # Step 1: Validate parameters
         start_node = self.primary_nodes[start]
@@ -450,18 +454,17 @@ class ProteinStructureDataset:
                 return False
         return True
 
-    def _generate_prioritized_helpers(
-        self, 
-        start_node: Node, 
-        goal_node: Node, 
-        radius: float, 
-        max_samples: int, 
-        max_distance: float
-    ) -> list[Node]:
-        """
+    def _generate_prioritized_helpers(self, 
+                                      start_node: Node, 
+                                      goal_node: Node, 
+                                      radius: float, 
+                                      max_samples: int, 
+                                      max_distance: float
+                                      ) -> list[Node]:
+        '''
         Generate helper nodes prioritizing the areas around start and end points
         with compact placement to maximize coverage while minimizing node count.
-        """
+        '''
         # Calculate midpoint between start and goal
         midpoint = Node(
             (start_node.x + goal_node.x) / 2,
@@ -536,15 +539,15 @@ class ProteinStructureDataset:
             if start_region_nodes < start_region_target:
                 center = start_node
                 sampling_radius = start_region_radius
-                region = "start"
+                region = 'start'
             elif goal_region_nodes < goal_region_target:
                 center = goal_node
                 sampling_radius = goal_region_radius
-                region = "goal"
+                region = 'goal'
             else:
                 center = midpoint
                 sampling_radius = middle_region_radius
-                region = "middle"
+                region = 'middle'
         
             # Try compact placement - first check if we have existing points
             if placed_points:
@@ -598,9 +601,9 @@ class ProteinStructureDataset:
                 placed_points.append(point)
             
                 # Update region counters
-                if region == "start":
+                if region == 'start':
                     start_region_nodes += 1
-                elif region == "goal":
+                elif region == 'goal':
                     goal_region_nodes += 1
                 else:
                     middle_region_nodes += 1
@@ -671,15 +674,14 @@ class ProteinStructureDataset:
         # lies on the segment (0 <= t <= 1)
         return (0 <= t1 <= 1) or (0 <= t2 <= 1)
 
-    def _build_optimized_visibility_graph(
-        self, 
-        helper_nodes: list[Node], 
-        radius: float,
-        max_distance: float,
-        start_node: Node,
-        goal_node: Node
-    ):
-        """Build visibility graph optimized to focus on nodes that might contribute to a valid path"""
+    def _build_optimized_visibility_graph(self, 
+                                          helper_nodes: list[Node], 
+                                          radius: float,
+                                          max_distance: float,
+                                          start_node: Node,
+                                          goal_node: Node
+                                          ):
+        '''Build visibility graph optimized to focus on nodes that might contribute to a valid path'''
         G = nx.Graph()
     
         # Add all nodes to the graph
@@ -763,18 +765,18 @@ class ProteinStructureDataset:
         return (idx1, idx2, result)
 
     def predict_crosslinks(self, 
-                          pcd: ProteinChainDataset, 
-                          residues_1: str, 
-                          residues_2: str, 
-                          min_length: float = 0, 
-                          max_length: float = sys.maxsize, 
-                          linker: Optional[str] = None,
-                          atom_type: str = 'CA',
-                          direct_path = True,
-                          radius: float = 1.925, # Half of CA-CA distance in peptide bond which is typicall between 3.75 to 3.85
-                          node_multiplier: int = 100,
-                          num_processes: int = 1 
-                          ) -> 'CrossLinkDataset':
+                           pcd: ProteinChainDataset, 
+                           residues_1: str, 
+                           residues_2: str, 
+                           min_length: float = 1.0, 
+                           max_length: float = sys.maxsize, 
+                           linker: Optional[str] = None,
+                           atom_type: str = 'CA',
+                           direct_path = True,
+                           radius: float = 1.925, # Half of CA-CA distance in peptide bond which is typicall between 3.75 to 3.85
+                           node_multiplier: int = 100,
+                           num_processes: int = 1 
+                           ) -> 'CrossLinkDataset':
 
         filtered_atoms = list(filter(lambda atom: atom.type == atom_type, self.atoms))
 
@@ -788,7 +790,7 @@ class ProteinStructureDataset:
             raise ValueError(
                 f'Node multiplier must be greater than 0, got {node_multiplier}')
 
-        if min_length < 0:
+        if min_length <= 0:
             raise ValueError(
                 f'Min length {min_length} must be greater than 0')
 
@@ -800,7 +802,7 @@ class ProteinStructureDataset:
         if num_processes <= 0:
             num_processes = max(1, multiprocessing.cpu_count())
 
-        def get_all_crosslink_candidates(residues: str) -> List['Atom']:
+        def _get_all_crosslink_candidates(residues: str) -> List['Atom']:
             # Same as original implementation
             residue_chars = list(residues)
             atoms = []
@@ -830,8 +832,8 @@ class ProteinStructureDataset:
                                     atoms.append(atom)
             return atoms
 
-        atoms_1 = get_all_crosslink_candidates(residues_1)
-        atoms_2 = get_all_crosslink_candidates(residues_2)
+        atoms_1 = _get_all_crosslink_candidates(residues_1)
+        atoms_2 = _get_all_crosslink_candidates(residues_2)
 
         crosslink_pairs = []  # Using list instead of set to preserve order
 
@@ -871,7 +873,7 @@ class ProteinStructureDataset:
                 pool.close()
                 pool.join()
 
-        def get_protein_by_chain(chain: str) -> str:
+        def _get_protein_by_chain(chain: str) -> str:
             for protein, chains in pcd:
                 for ch in chains:
                     if ch == chain:
@@ -881,12 +883,12 @@ class ProteinStructureDataset:
         crosslinks = []
         for a1, a2 in crosslink_pairs:
             crosslinks.append(CrossLinkEntity(
-                get_protein_by_chain(a1.chain),
+                _get_protein_by_chain(a1.chain),
                 '',
                 '-1',
                 '-1',
                 a1.residue + str(a1.number),
-                get_protein_by_chain(a2.chain),
+                _get_protein_by_chain(a2.chain),
                 '',
                 '-1',
                 '-1',
@@ -1064,21 +1066,21 @@ class CrossLinkDataset:
 
         str_file = file
         header = (
-            f"software{separator}protein_1{separator}peptide_1{separator}from_1{separator}"
-            f"to_1{separator}site_1{separator}protein_2{separator}peptide_2{separator}"
-            f"from_2{separator}to_2{separator}site_2{separator}interprotein{separator}"
-            f"homotypical{separator}replicas\n"
+            f'software{separator}protein_1{separator}peptide_1{separator}from_1{separator}'
+            f'to_1{separator}site_1{separator}protein_2{separator}peptide_2{separator}'
+            f'from_2{separator}to_2{separator}site_2{separator}interprotein{separator}'
+            f'homotypical{separator}replicas\n'
         )
 
         with open(file, 'w') as file:
             file.write(header)
             for xl, frequency in self.xls_site_count.items():
                 file.write(
-                    f"{xl.software}{separator}{xl.protein_1}{separator}{xl.peptide_1}{separator}"
-                    f"{xl.from_1}{separator}{xl.to_1}{separator}{xl.site_1}{separator}"
-                    f"{xl.protein_2}{separator}{xl.peptide_2}{separator}{xl.from_2}{separator}"
-                    f"{xl.to_2}{separator}{xl.site_2}{separator}{xl.is_interprotein}{separator}"
-                    f"{xl.is_homotypical}{separator}{frequency}\n"
+                    f'{xl.software}{separator}{xl.protein_1}{separator}{xl.peptide_1}{separator}'
+                    f'{xl.from_1}{separator}{xl.to_1}{separator}{xl.site_1}{separator}'
+                    f'{xl.protein_2}{separator}{xl.peptide_2}{separator}{xl.from_2}{separator}'
+                    f'{xl.to_2}{separator}{xl.site_2}{separator}{xl.is_interprotein}{separator}'
+                    f'{xl.is_homotypical}{separator}{frequency}\n'
                 )
 
     def save_crosslinks(self, folder_path: str, file_name: str, separator: str = '\t'):
@@ -1087,37 +1089,37 @@ class CrossLinkDataset:
 
         str_file = file
         header = (
-            f"software{separator}protein_1{separator}peptide_1{separator}from_1{separator}"
-            f"to_1{separator}site_1{separator}protein_2{separator}peptide_2{separator}"
-            f"from_2{separator}to_2{separator}site_2{separator}interprotein{separator}"
-            f"homotypical{separator}score\n"
+            f'software{separator}protein_1{separator}peptide_1{separator}from_1{separator}'
+            f'to_1{separator}site_1{separator}protein_2{separator}peptide_2{separator}'
+            f'from_2{separator}to_2{separator}site_2{separator}interprotein{separator}'
+            f'homotypical{separator}score\n'
         )
 
         with open(file, 'w') as file:
             file.write(header)
             for xl in self.xls:
                 file.write(
-                    f"{xl.software}{separator}{xl.protein_1}{separator}{xl.peptide_1}{separator}"
-                    f"{xl.from_1}{separator}{xl.to_1}{separator}{xl.site_1}{separator}"
-                    f"{xl.protein_2}{separator}{xl.peptide_2}{separator}{xl.from_2}{separator}"
-                    f"{xl.to_2}{separator}{xl.site_2}{separator}{xl.is_interprotein}{separator}"
-                    f"{xl.is_homotypical}{separator}{xl.score}\n"
+                    f'{xl.software}{separator}{xl.protein_1}{separator}{xl.peptide_1}{separator}'
+                    f'{xl.from_1}{separator}{xl.to_1}{separator}{xl.site_1}{separator}'
+                    f'{xl.protein_2}{separator}{xl.peptide_2}{separator}{xl.from_2}{separator}'
+                    f'{xl.to_2}{separator}{xl.site_2}{separator}{xl.is_interprotein}{separator}'
+                    f'{xl.is_homotypical}{separator}{xl.score}\n'
                 )
 
-    def export_for_chimerax(
-        self, 
-        pcd: ProteinChainDataset, 
-        folder_path: str, 
-        file_name: str,  
-        diameter: float = 0.2, 
-        dashes: int = 1,
-        color_valid_distance: str = "#48cae4", # Sky Blue
-        color_invalid_outsider: str = "#d62828", # Red
-        protein_structure: ProteinStructureDataset = None,
-        min_distance: float = 0,
-        max_distance: float = sys.maxsize,
-        atom_type: str = 'CA'
-    ) -> None:
+    def export_for_chimerax(self, 
+                            pcd: ProteinChainDataset, 
+                            folder_path: str, 
+                            file_name: str,  
+                            diameter: float = 0.2, 
+                            dashes: int = 1,
+                            color_valid_distance: str = '#48cae4', # Sky Blue
+                            color_invalid_outsider: str = '#d62828', # Red
+                            protein_structure: ProteinStructureDataset = None,
+                            min_distance: float = 0,
+                            max_distance: float = sys.maxsize,
+                            atom_type: str = 'CA'
+                            ) -> None:
+
         os.makedirs(folder_path, exist_ok=True)
     
         # Only filter protein_structure if it's not None
@@ -1128,11 +1130,11 @@ class CrossLinkDataset:
                 raise ValueError(f'Invalid atom type {atom_type}')
 
         def _write_to_pb_file(buffer: List[str], filename: str):
-            buffer = "\n".join(buffer)
+            buffer = '\n'.join(buffer)
             if buffer:
                 file_path = os.path.join(folder_path, filename)
-                with open(file_path, "w") as file:
-                    file.write(f"; dashes = {dashes}\n; radius = {diameter}\n{buffer}")
+                with open(file_path, 'w') as file:
+                    file.write(f'; dashes = {dashes}\n; radius = {diameter}\n{buffer}')
 
         def _clasify_crosslink(crosslink: CrossLinkEntity, valid_buffer: List[str], outliar_buffer: List[str], chain1: str, chain2: str) -> None:
             # Create lookup dictionaries for faster access if protein_structure exists
@@ -1150,13 +1152,13 @@ class CrossLinkDataset:
 
                 distance = matching_atoms1[0].distance_to(matching_atoms2[0])
                 if distance >= min_distance and distance <= max_distance:
-                    valid_buffer.append(f"/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_valid_distance}")
+                    valid_buffer.append(f'/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_valid_distance}')
                 else:
-                    outliar_buffer.append(f"/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_invalid_outsider}")
+                    outliar_buffer.append(f'/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_invalid_outsider}')
 
             else:
                 # No protein structure to validate against, consider all valid
-                valid_buffer.append(f"/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_valid_distance}")
+                valid_buffer.append(f'/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_valid_distance}')
 
         xl_frequencies: Set[int] = set(self.xls_site_count.values())
         for xl_frequency in xl_frequencies:
@@ -1196,13 +1198,13 @@ class CrossLinkDataset:
 
         # Writing to files
         if protein_structure:
-            _write_to_pb_file(outliers_buffer_heterotypical_inter_xl, f"outliers_{file_name}_interprotein_xl_{xl_frequency}_rep.pb")
-            _write_to_pb_file(outliers_buffer_heterotypical_intra_xl, f"outliers_{file_name}_intraprotein_xl_{xl_frequency}_rep.pb")
-            _write_to_pb_file(outliers_buffer_homotypical_xl, f"outliers_{file_name}_homotypical_xl_{xl_frequency}_rep.pb")
+            _write_to_pb_file(outliers_buffer_heterotypical_inter_xl, f'outliers_{file_name}_interprotein_xl_{xl_frequency}_rep.pb')
+            _write_to_pb_file(outliers_buffer_heterotypical_intra_xl, f'outliers_{file_name}_intraprotein_xl_{xl_frequency}_rep.pb')
+            _write_to_pb_file(outliers_buffer_homotypical_xl, f'outliers_{file_name}_homotypical_xl_{xl_frequency}_rep.pb')
 
-        _write_to_pb_file(buffer_heterotypical_inter_xl, f"{file_name}_interprotein_xl_{xl_frequency}_rep.pb")
-        _write_to_pb_file(buffer_heterotypical_intra_xl, f"{file_name}_intraprotein_xl_{xl_frequency}_rep.pb")
-        _write_to_pb_file(buffer_homotypical_xl, f"{file_name}_homotypical_xl_{xl_frequency}_rep.pb")
+        _write_to_pb_file(buffer_heterotypical_inter_xl, f'{file_name}_interprotein_xl_{xl_frequency}_rep.pb')
+        _write_to_pb_file(buffer_heterotypical_intra_xl, f'{file_name}_intraprotein_xl_{xl_frequency}_rep.pb')
+        _write_to_pb_file(buffer_homotypical_xl, f'{file_name}_homotypical_xl_{xl_frequency}_rep.pb')
 
     def export_ppis_for_gephi(
         self, 
@@ -1231,12 +1233,11 @@ class CrossLinkDataset:
     
         self._create_gexf(save_path, node_buffer, edge_buffer)
 
-    def export_aais_for_gephi(
-        self, 
-        pcd: ProteinChainDataset, 
-        folder_path: str, 
-        file_name: str 
-    ) -> None:
+    def export_aais_for_gephi(self, 
+                              pcd: ProteinChainDataset, 
+                              folder_path: str, 
+                              file_name: str 
+                              ) -> None:
 
         save_path = self._validate_gephi_format(folder_path, file_name)
         node_buffer = dict()
@@ -1305,7 +1306,7 @@ class CrossLinkDataset:
     def _validate_gephi_format(self, folder_name: str, file_name: str) -> str:
         file_extension = os.path.splitext(file_name)[1]
         lower_extension = file_extension.lower()
-        if lower_extension != ".gexf":
+        if lower_extension != '.gexf':
             raise ValueError(f'Wrong data format is provided in {file_name}. Only ".gexf" format is supported')
         os.makedirs(folder_name, exist_ok=True)
         return os.path.join(folder_name, file_name)
@@ -1329,7 +1330,7 @@ class CrossLinkDataset:
     
         rough_string = ET.tostring(gexf, encoding='utf-8')
         reparsed = minidom.parseString(rough_string)
-        xml_content = reparsed.toprettyxml(indent="  ")
+        xml_content = reparsed.toprettyxml(indent='  ')
         xml_content = xml_content.replace('<?xml version="1.0" ?>',
                             '<?xml version="1.0" encoding="UTF-8"?>')
 
@@ -1420,7 +1421,7 @@ class FastaEntity:
         splited_header = header.strip().split('|')
         araport11_id = splited_header[0].replace(' ', '').replace('>', '')
 
-        prot_gene = splited_header[1].replace("Symbols: ", "")
+        prot_gene = splited_header[1].replace('Symbols: ', '')
         prot_gene = prot_gene.split()
         prot_gene = prot_gene[0].replace(',', '').replace(' ', '')
         return araport11_id, prot_gene
@@ -1470,24 +1471,24 @@ class FastaDataset:
             if not line:
                 continue
 
-            if line.startswith(">"):
+            if line.startswith('>'):
                 if current_header:
-                    header = ">" + current_header
+                    header = '>' + current_header
                     if self.remove_parenthesis:
                         header = header.replace(')', '').replace('(', '')
 
-                    entries.append(FastaEntity(header, "".join(current_sequence), self.fasta_format))
+                    entries.append(FastaEntity(header, ''.join(current_sequence), self.fasta_format))
                 current_header = line[1:].strip()
                 current_sequence = []
             else:
                 current_sequence.append(line)
 
         if current_header:
-            header = ">" + current_header
+            header = '>' + current_header
             if self.remove_parenthesis:
                         header = header.replace(')', '').replace('(', '')
 
-            entries.append(FastaEntity(header, "".join(current_sequence), self.fasta_format))
+            entries.append(FastaEntity(header, ''.join(current_sequence), self.fasta_format))
 
         return entries
     
@@ -1507,7 +1508,7 @@ class FastaDataset:
             raise StopIteration
 
     def __str__(self) -> str:
-        return "\n".join(str(fasta) for fasta in self.entities)
+        return '\n'.join(str(fasta) for fasta in self.entities)
         
     def filter_by_crosslinks(self, merox_xls: 'CrossLinkDataset') -> 'FastaDataset':
         filtered_entities = set()
@@ -1534,7 +1535,7 @@ class FastaDataset:
             os.makedirs(folder_path)
         
         file_path = os.path.join(folder_path, file_name)
-        with open(file_path, "w") as file:
+        with open(file_path, 'w') as file:
             file.write(text_output)
 
 

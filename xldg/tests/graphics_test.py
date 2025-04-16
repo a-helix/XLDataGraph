@@ -5,14 +5,16 @@ import copy
 from xldg.data import Path, MeroX, Domain, Fasta, CrossLink, ProteinStructure, ProteinChain
 from xldg.graphics import CircosConfig, Circos, VennConfig, Venn2, Venn3
 
+
 def _read_file(file_path: str, delete: bool = False):
     content = None
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
     if delete: 
         os.remove(file_path)
     return content
+
 
 class TestCircos:
     @pytest.fixture(autouse=True)
@@ -43,13 +45,13 @@ class TestCircos:
                               plot_xl_legend = False)
         circos = Circos(self.combined_data, config)
 
-        save_path = os.path.join(self.CWD, "circos_basic.svg")
+        save_path = os.path.join(self.CWD, 'circos_basic.svg')
         before_exhist = os.path.isfile(save_path)
         circos.save(save_path)
 
         after_exhist = os.path.isfile(save_path)
         after_content = _read_file(save_path, True)
-        reference_path = os.path.join(self.CWD, "circos_reference_basic.svg")
+        reference_path = os.path.join(self.CWD, 'circos_reference_basic.svg')
         reference_content = _read_file(reference_path)
 
         assert (
@@ -85,8 +87,8 @@ class TestCircos:
         basic_circos = Circos(self.combined_data, basic_config)
         extended_circos = Circos(self.combined_data, extended_config)
 
-        basic_path = os.path.join(self.CWD, "circos_test_cosmetics_minimal.svg")
-        extended_path = os.path.join(self.CWD, "circos_test_cosmetics_extended.svg")
+        basic_path = os.path.join(self.CWD, 'circos_test_cosmetics_minimal.svg')
+        extended_path = os.path.join(self.CWD, 'circos_test_cosmetics_extended.svg')
 
         basic_circos.save(basic_path)
         extended_circos.save(extended_path)
@@ -94,8 +96,8 @@ class TestCircos:
         basic_content = _read_file(basic_path, True)
         extended_content = _read_file(extended_path, True)
 
-        ref_basic_path = os.path.join(self.CWD, "circos_reference_cosmetics_minimal.svg")
-        ref_extended_path = os.path.join(self.CWD, "circos_reference_cosmetics_extended.svg")
+        ref_basic_path = os.path.join(self.CWD, 'circos_reference_cosmetics_minimal.svg')
+        ref_extended_path = os.path.join(self.CWD, 'circos_reference_cosmetics_extended.svg')
 
         ref_basic_content = _read_file(ref_basic_path)
         ref_extended_content = _read_file(ref_extended_path)
@@ -124,9 +126,9 @@ class TestCircos:
         self.inter_circos = Circos(self.combined_data, self.inter_config)
         self.intra_circos = Circos(self.combined_data, self.intra_config)
 
-        homotypic_path = os.path.join(self.CWD, "circos_test_homotypic.svg")
-        inter_path = os.path.join(self.CWD, "circos_test_inter.svg")
-        intra_path = os.path.join(self.CWD, "circos_test_intra.svg")
+        homotypic_path = os.path.join(self.CWD, 'circos_test_homotypic.svg')
+        inter_path = os.path.join(self.CWD, 'circos_test_inter.svg')
+        intra_path = os.path.join(self.CWD, 'circos_test_intra.svg')
 
         self.homotypic_circos.save(homotypic_path)
         self.inter_circos.save(inter_path)
@@ -136,9 +138,9 @@ class TestCircos:
         inter_content = _read_file(inter_path, True)
         intra_content = _read_file(intra_path, True)
 
-        ref_homotypic_path = os.path.join(self.CWD, "circos_reference_homotypic.svg")
-        ref_inter_path = os.path.join(self.CWD, "circos_reference_inter.svg")
-        ref_intra_path = os.path.join(self.CWD, "circos_reference_intra.svg")
+        ref_homotypic_path = os.path.join(self.CWD, 'circos_reference_homotypic.svg')
+        ref_inter_path = os.path.join(self.CWD, 'circos_reference_inter.svg')
+        ref_intra_path = os.path.join(self.CWD, 'circos_reference_intra.svg')
 
         ref_homotypic_content = _read_file(ref_homotypic_path)
         ref_inter_content = _read_file(ref_inter_path)
@@ -157,8 +159,8 @@ class TestCircos:
         self.min_circos = Circos(self.combined_data, self.min_config)
         self.max_circos = Circos(self.combined_data, self.max_config)
 
-        min_path = os.path.join(self.CWD, "circos_test_min.svg")
-        max_path = os.path.join(self.CWD, "circos_test_max.svg")
+        min_path = os.path.join(self.CWD, 'circos_test_min.svg')
+        max_path = os.path.join(self.CWD, 'circos_test_max.svg')
 
         self.min_circos.save(min_path)
         self.max_circos.save(max_path)
@@ -166,8 +168,8 @@ class TestCircos:
         min_content = _read_file(min_path, True)
         max_content = _read_file(max_path, True)
 
-        ref_min_path = os.path.join(self.CWD, "circos_reference_min.svg")
-        ref_max_path = os.path.join(self.CWD, "circos_reference_max.svg")
+        ref_min_path = os.path.join(self.CWD, 'circos_reference_min.svg')
+        ref_max_path = os.path.join(self.CWD, 'circos_reference_max.svg')
 
         ref_min_content = _read_file(ref_min_path)
         ref_max_content = _read_file(ref_max_path)
@@ -184,8 +186,8 @@ class TestCircos:
         self.basic_circos = Circos(self.combined_data, self.basic_config)
         self.modified_circos = Circos(self.combined_data, self.modified_config)
 
-        basic_path = os.path.join(self.CWD, "circos_test_all_proteins_basic.svg")
-        modified_path = os.path.join(self.CWD, "circos_test_all_proteins_modified.svg")
+        basic_path = os.path.join(self.CWD, 'circos_test_all_proteins_basic.svg')
+        modified_path = os.path.join(self.CWD, 'circos_test_all_proteins_modified.svg')
 
         self.basic_circos.save(basic_path)
         self.modified_circos.save(modified_path)
@@ -193,8 +195,8 @@ class TestCircos:
         basic_content = _read_file(basic_path, True)
         modified_content = _read_file(modified_path, True)
 
-        ref_basic_path = os.path.join(self.CWD, "circos_reference_all_proteins_basic.svg")
-        ref_modified_path = os.path.join(self.CWD, "circos_reference_all_proteins_modified.svg")
+        ref_basic_path = os.path.join(self.CWD, 'circos_reference_all_proteins_basic.svg')
+        ref_modified_path = os.path.join(self.CWD, 'circos_reference_all_proteins_modified.svg')
 
         ref_basic_content = _read_file(ref_basic_path)
         ref_modified_content = _read_file(ref_modified_path)
@@ -218,10 +220,10 @@ class TestCircos:
         default_homo_color = copy.deepcopy(self.circos.homotypic_xl_color)
         default_general_color = copy.deepcopy(self.circos.general_xl_color)
 
-        intra_color = "#21a2ed"
-        inter_color = "#00008B"
-        homo_color = "#ed2b21"
-        general_color = "#7d8082"
+        intra_color = '#21a2ed'
+        inter_color = '#00008B'
+        homo_color = '#ed2b21'
+        general_color = '#7d8082'
 
         self.circos.set_colors()
 
@@ -239,10 +241,10 @@ class TestCircos:
         )
 
     def test_poditive_set_xls_colors(self):
-        light_gray = "#D3D3D3"
-        medium_gray = "#808080"
-        dark_gray = "#404040"
-        charcoal_gray = "#333333"
+        light_gray = '#D3D3D3'
+        medium_gray = '#808080'
+        dark_gray = '#404040'
+        charcoal_gray = '#333333'
         self.circos.set_colors(light_gray, medium_gray, dark_gray, charcoal_gray)
 
         assert (
@@ -253,13 +255,14 @@ class TestCircos:
         )
 
     def test_exception_set_xls_colors(self):
-        light_gray = "Light Grey"
-        medium_gray = "#808080"
-        dark_gray = "#404040"
-        charcoal_gray = "#333333"
+        light_gray = 'Light Grey'
+        medium_gray = '#808080'
+        dark_gray = '#404040'
+        charcoal_gray = '#333333'
 
-        with pytest.raises(ValueError, match = f'ERROR! Invalid hex color: Light Grey'):
+        with pytest.raises(ValueError, match = f'Invalid hex color: Light Grey'):
             self.circos.set_colors(light_gray, medium_gray, dark_gray, charcoal_gray)
+
 
 class TestVenn2:
     @pytest.fixture(autouse=True)
@@ -279,13 +282,13 @@ class TestVenn2:
         compare_data = CrossLink.remove_interprotein(self.combined_data)
         venn2 = Venn2(etalon_data, compare_data, self.config)
 
-        save_path = os.path.join(self.CWD, "venn2_test_positive.svg")
+        save_path = os.path.join(self.CWD, 'venn2_test_positive.svg')
         before_exhist = os.path.isfile(save_path)
         venn2.save(save_path)
 
         after_exhist = os.path.isfile(save_path)
         after_content = _read_file(save_path, True)
-        reference_path = os.path.join(self.CWD, "venn2_reference_positive.svg")
+        reference_path = os.path.join(self.CWD, 'venn2_reference_positive.svg')
         reference_content = _read_file(reference_path)
 
         assert (
@@ -303,13 +306,13 @@ class TestVenn2:
 
         venn2 = Venn2(etalon_data, compare_data, self.config)
 
-        save_path = os.path.join(self.CWD, "venn2_test_negative.svg")
+        save_path = os.path.join(self.CWD, 'venn2_test_negative.svg')
         before_exhist = os.path.isfile(save_path)
         venn2.save(save_path)
 
         after_exhist = os.path.isfile(save_path)
         after_content = _read_file(save_path, True)
-        reference_path = os.path.join(self.CWD, "venn2_reference_negative.svg")
+        reference_path = os.path.join(self.CWD, 'venn2_reference_negative.svg')
         reference_content = _read_file(reference_path)
 
         assert (
@@ -319,9 +322,9 @@ class TestVenn2:
             )
 
     def test_poditive_set_xls_colors(self):
-        light_gray = "#D3D3D3"
-        medium_gray = "#808080"
-        dark_gray = "#404040"
+        light_gray = '#D3D3D3'
+        medium_gray = '#808080'
+        dark_gray = '#404040'
 
         etalon_data = CrossLink.remove_homotypic(self.combined_data)
         compare_data = CrossLink.remove_interprotein(self.combined_data)
@@ -336,12 +339,12 @@ class TestVenn2:
         )
 
     def test_exception_set_xls_colors(self):
-        light_gray = "Light Grey"
-        medium_gray = "#808080"
-        dark_gray = "#404040"
+        light_gray = 'Light Grey'
+        medium_gray = '#808080'
+        dark_gray = '#404040'
         venn2 = Venn2(self.combined_data, self.combined_data, self.config)
 
-        with pytest.raises(ValueError, match = f'ERROR! Invalid hex color: Light Grey'):
+        with pytest.raises(ValueError, match = f'Invalid hex color: Light Grey'):
             venn2.set_colors(light_gray, medium_gray, dark_gray)
 
 
@@ -350,14 +353,14 @@ class TestVenn3:
     def setup(self):
         # Current Working Directory
         self.CWD = os.path.join(os.getcwd(), 'tests', 'files', 'graphics', 'venn3')
-        data_folder = os.path.join(os.getcwd(), "tests", "files", "data")
+        data_folder = os.path.join(os.getcwd(), 'tests', 'files', 'data')
 
         # Protein Structure
         structure_folder = os.path.join(data_folder, 'structure')
-        monomer_path = os.path.join(structure_folder, "two_dimers_complex_structure_reference.cif")
+        monomer_path = os.path.join(structure_folder, 'two_dimers_complex_structure_reference.cif')
         structure = ProteinStructure.load_data(monomer_path)
 
-        pcd_path = os.path.join(data_folder, 'crosslink', 'dimer.pcd') 
+        pcd_path = os.path.join(data_folder, 'pcd', 'dimer.pcd') 
         pcd = ProteinChain.load_data(pcd_path)
         self.predicted_crosslinks = structure.predict_crosslinks(pcd, 'K', 'K')
 
@@ -376,12 +379,12 @@ class TestVenn3:
 
         venn3 = Venn3(first, second, third, self.config)
 
-        save_path = os.path.join(self.CWD, "venn3_test_positive.svg")
+        save_path = os.path.join(self.CWD, 'venn3_test_positive.svg')
         before_exhist = os.path.isfile(save_path)
         venn3.save(save_path)
         after_exhist = os.path.isfile(save_path)
         after_content = _read_file(save_path, True)
-        reference_path = os.path.join(self.CWD, "venn3_reference_positive.svg")
+        reference_path = os.path.join(self.CWD, 'venn3_reference_positive.svg')
         reference_content = _read_file(reference_path)
         assert (
             before_exhist == False and 
@@ -401,12 +404,12 @@ class TestVenn3:
 
         venn3 = Venn3(iterprotein_crosslinks, itraprotein_crosslinks, homotypical_crosslinks, self.config)
 
-        save_path = os.path.join(self.CWD, "venn3_test_negative.svg")
+        save_path = os.path.join(self.CWD, 'venn3_test_negative.svg')
         before_exhist = os.path.isfile(save_path)
         venn3.save(save_path)
         after_exhist = os.path.isfile(save_path)
         after_content = _read_file(save_path, True)
-        reference_path = os.path.join(self.CWD, "venn3_reference_negative.svg")
+        reference_path = os.path.join(self.CWD, 'venn3_reference_negative.svg')
         reference_content = _read_file(reference_path)
         assert (
             before_exhist == False and 
@@ -415,13 +418,13 @@ class TestVenn3:
             )
 
     def test_positive_set_xls_colors(self):
-        light_red = "#FFCCCC"
-        light_green = "#CCFFCC"
-        light_blue = "#CCCCFF"
-        red_green = "#FFFF99"  # Yellow for overlap
-        green_blue = "#99FFFF"  # Cyan for overlap
-        red_blue = "#FF99FF"   # Magenta for overlap
-        center = "#FFFFFF"     # White for center overlap
+        light_red = '#FFCCCC'
+        light_green = '#CCFFCC'
+        light_blue = '#CCCCFF'
+        red_green = '#FFFF99'  # Yellow for overlap
+        green_blue = '#99FFFF'  # Cyan for overlap
+        red_blue = '#FF99FF'   # Magenta for overlap
+        center = '#FFFFFF'     # White for center overlap
         
         first = CrossLink.remove_interprotein(self.predicted_crosslinks)
         second = CrossLink.remove_intraprotein(self.predicted_crosslinks)
@@ -433,10 +436,10 @@ class TestVenn3:
             light_red, light_green, light_blue,
             red_green, green_blue, red_blue, center
         )
-        save_path = os.path.join(self.CWD, "venn3_test_colors.svg")
+        save_path = os.path.join(self.CWD, 'venn3_test_colors.svg')
         venn3.save(save_path)
         content = _read_file(save_path, True)
-        reference = _read_file(os.path.join(self.CWD, "venn3_reference_colors.svg"))
+        reference = _read_file(os.path.join(self.CWD, 'venn3_reference_colors.svg'))
 
         assert (
             venn3.first_color == light_red and
@@ -450,20 +453,20 @@ class TestVenn3:
         )
 
     def test_exception_set_xls_colors(self):
-        invalid_color = "Beautiful Color"
-        light_green = "#CCFFCC"
-        light_blue = "#CCCCFF"
-        red_green = "#FFFF99"
-        green_blue = "#99FFFF"
-        red_blue = "#FF99FF"
-        center = "#FFFFFF"
+        invalid_color = 'Beautiful Color'
+        light_green = '#CCFFCC'
+        light_blue = '#CCCCFF'
+        red_green = '#FFFF99'
+        green_blue = '#99FFFF'
+        red_blue = '#FF99FF'
+        center = '#FFFFFF'
         
         first_data = CrossLink.remove_homotypic(self.combined_data)
         second_data = CrossLink.remove_interprotein(self.combined_data)
         third_data = CrossLink.remove_intraprotein(self.combined_data)
         venn3 = Venn3(first_data, second_data, third_data, self.config)
         
-        with pytest.raises(ValueError, match=f'ERROR! Invalid hex color: Beautiful Color'):
+        with pytest.raises(ValueError, match=f'Invalid hex color: Beautiful Color'):
             venn3.set_colors(
                 invalid_color, 
                 light_green, 
@@ -473,4 +476,3 @@ class TestVenn3:
                 red_blue, 
                 center
             )
-        

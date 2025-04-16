@@ -1,7 +1,8 @@
 import pytest
 import os
 import re
-from xldg.data import Path, Fasta, MeroX, Domain, CrossLink, ProteinStructure, Util
+from xldg.data import Path, Fasta, MeroX, Domain, CrossLink, ProteinStructure, ProteinChain, Util
+
 
 class TestPath:
     @pytest.fixture(autouse=True)
@@ -76,24 +77,24 @@ class TestPath:
         path = os.path.join(self.CWD, 'BSA_1.fasta')
         none_format = 'none'
         with pytest.raises(ValueError, 
-                           match=f"Invalid file format. Expected {none_format.upper()}, got FASTA"):
+                           match=f'Invalid file format. Expected {none_format.upper()}, got FASTA'):
              sample = Path.confirm_file_format(path, none_format)
 
     def test_read_to_string(self):
         path = os.path.join(self.CWD, 'BSA_1.fasta')
         sample = Path.read_to_string(path)
-        reference = ">sp|P02769|ALBU_BOVIN Albumin OS=Bos taurus OX=9913 GN=ALB PE=1 SV=4\n" \
-                   "MKWVTFISLLLLFSSAYSRGVFRRDTHKSEIAHRFKDLGEEHFKGLVLIAFSQYLQQCPF\n" \
-                   "DEHVKLVNELTEFAKTCVADESHAGCEKSLHTLFGDELCKVASLRETYGDMADCCEKQEP\n" \
-                   "ERNECFLSHKDDSPDLPKLKPDPNTLCDEFKADEKKFWGKYLYEIARRHPYFYAPELLYY\n" \
-                   "ANKYNGVFQECCQAEDKGACLLPKIETMREKVLASSARQRLRCASIQKFGERALKAWSVA\n" \
-                   "RLSQKFPKAEFVEVTKLVTDLTKVHKECCHGDLLECADDRADLAKYICDNQDTISSKLKE\n" \
-                   "CCDKPLLEKSHCIAEVEKDAIPENLPPLTADFAEDKDVCKNYQEAKDAFLGSFLYEYSRR\n" \
-                   "HPEYAVSVLLRLAKEYEATLEECCAKDDPHACYSTVFDKLKHLVDEPQNLIKQNCDQFEK\n" \
-                   "LGEYGFQNALIVRYTRKVPQVSTPTLVEVSRSLGKVGTRCCTKPESERMPCTEDYLSLIL\n" \
-                   "NRLCVLHEKTPVSEKVTKCCTESLVNRRPCFSALTPDETYVPKAFDEKLFTFHADICTLP\n" \
-                   "DTEKQIKKQTALVELLKHKPKATEEQLKTVMENFVAFVDKCCAADDKEACFAVEGPKLVV\n" \
-                   "STQTALA"
+        reference = '>sp|P02769|ALBU_BOVIN Albumin OS=Bos taurus OX=9913 GN=ALB PE=1 SV=4\n' \
+                   'MKWVTFISLLLLFSSAYSRGVFRRDTHKSEIAHRFKDLGEEHFKGLVLIAFSQYLQQCPF\n' \
+                   'DEHVKLVNELTEFAKTCVADESHAGCEKSLHTLFGDELCKVASLRETYGDMADCCEKQEP\n' \
+                   'ERNECFLSHKDDSPDLPKLKPDPNTLCDEFKADEKKFWGKYLYEIARRHPYFYAPELLYY\n' \
+                   'ANKYNGVFQECCQAEDKGACLLPKIETMREKVLASSARQRLRCASIQKFGERALKAWSVA\n' \
+                   'RLSQKFPKAEFVEVTKLVTDLTKVHKECCHGDLLECADDRADLAKYICDNQDTISSKLKE\n' \
+                   'CCDKPLLEKSHCIAEVEKDAIPENLPPLTADFAEDKDVCKNYQEAKDAFLGSFLYEYSRR\n' \
+                   'HPEYAVSVLLRLAKEYEATLEECCAKDDPHACYSTVFDKLKHLVDEPQNLIKQNCDQFEK\n' \
+                   'LGEYGFQNALIVRYTRKVPQVSTPTLVEVSRSLGKVGTRCCTKPESERMPCTEDYLSLIL\n' \
+                   'NRLCVLHEKTPVSEKVTKCCTESLVNRRPCFSALTPDETYVPKAFDEKLFTFHADICTLP\n' \
+                   'DTEKQIKKQTALVELLKHKPKATEEQLKTVMENFVAFVDKCCAADDKEACFAVEGPKLVV\n' \
+                   'STQTALA'
         assert sample == reference
 
 
@@ -101,9 +102,9 @@ class TestFasta:
     @pytest.fixture(autouse=True)
     def setup(self):
         # Current Working Directory
-        CWD = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'fasta')
-        self.single_fasta =  os.path.join(CWD, 'fasta_1.fasta')
-        self.all_fasta =  Path.list_given_type_files(CWD, 'fasta')
+        self.CWD = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'fasta')
+        self.single_fasta =  os.path.join(self.CWD, 'fasta_1.fasta')
+        self.all_fasta =  Path.list_given_type_files(self.CWD, 'fasta')
 
     def test_single_load_data(self):
         fasta = Fasta.load_data(self.single_fasta, 'Custom')
@@ -113,29 +114,50 @@ class TestFasta:
         fasta = Fasta.load_data(self.all_fasta, 'Custom')
         assert len(fasta) == 3
 
+    def test_exception_wrong_file_format(self):
+        path = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'dmn', 'domains_1.dmn')
+        with pytest.raises(ValueError, match=f'Invalid file format. Expected FAS, FASTA, got DMN'):
+            fasta = Fasta.load_data(path, 'Custom')
+
+    def test_exception_file_does_not_exhist(self):
+        path = os.path.join(self.CWD, 'none.fasta')
+        with pytest.raises(FileNotFoundError):
+            fasta = Fasta.load_data(path, 'Custom')
+
+
 class TestDomain:
     @pytest.fixture(autouse=True)
     def setup(self):
         # Current Working Directory
-        CWD = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'dmn')
-        self.single_domain =  os.path.join(CWD, 'domains_1.dmn')
-        self.all_domains =  Path.list_given_type_files(CWD, 'dmn')
+        self.CWD = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'dmn')
+        self.single_domain =  os.path.join(self.CWD, 'domains_1.dmn')
+        self.all_domains =  Path.list_given_type_files(self.CWD, 'dmn')
 
     def test_single_load_data(self):
-        fasta =Domain.load_data(self.single_domain)
-        assert len(fasta) == 10
+        domain = Domain.load_data(self.single_domain)
+        assert len(domain) == 10
 
     def test_multiple_load_data(self):
-        fasta = Domain.load_data(self.all_domains)
-        assert len(fasta) == 19
+        domain = Domain.load_data(self.all_domains)
+        assert len(domain) == 19
+
+    def test_exception_wrong_file_format(self):
+        path = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'fasta', 'fasta_1.fasta')
+        with pytest.raises(ValueError, match=f'Invalid file format. Expected DMN, got FASTA'):
+            domain = Domain.load_data(path)
+
+    def test_exception_file_does_not_exhist(self):
+        path = os.path.join(self.CWD, 'none.dmn')
+        with pytest.raises(FileNotFoundError):
+            domain = Domain.load_data(path)
 
 class TestMeroX:
     @pytest.fixture(autouse=True)
     def setup(self):
         # Current Working Directory
-        CWD = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'merox')
-        self.single_zhrm =  os.path.join(CWD, 'dataset_1.zhrm')
-        self.all_zhrm =  Path.list_given_type_files(CWD, 'zhrm')
+        self.CWD = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'merox')
+        self.single_zhrm =  os.path.join(self.CWD, 'dataset_1.zhrm')
+        self.all_zhrm =  Path.list_given_type_files(self.CWD, 'zhrm')
 
     def test_single_load_data(self):
         crosslinks = MeroX.load_data(self.single_zhrm, 'DSBU')
@@ -151,27 +173,28 @@ class TestMeroX:
             len(crosslinks[2]) == 112
             )
 
+    def test_exception_wrong_file_format(self):
+        path = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'fasta', 'fasta_1.fasta')
+        with pytest.raises(ValueError, match=f'Invalid file format. Expected ZHRM, got FASTA'):
+            crosslinks = MeroX.load_data(path, 'DSBU')
+
+    def test_exception_file_does_not_exhist(self):
+        path = os.path.join(self.CWD, 'none.zhrm')
+        with pytest.raises(FileNotFoundError):
+            crosslinks = MeroX.load_data(path, 'DSBU')
+
 
 class TestCrossLink:
     @pytest.fixture(autouse=True)
     def setup(self):
         # Current Working Directory
-        self.CWD = os.path.join(os.getcwd(), "tests", "files", "data", "crosslink")
-        ZHRM = os.path.join(os.getcwd(), "tests", "files", "data", "merox")
+        self.CWD = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'crosslink')
+        ZHRM = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'merox')
         self.chimerax_folder = os.path.join(self.CWD, 'chimerax')
 
         zhrm_folder_path = Path.list_given_type_files(ZHRM, 'zhrm')
         self.folder_content = MeroX.load_data(zhrm_folder_path, 'DSBU')
         self.combined_dataset = CrossLink.combine_all(self.folder_content)
-
-    def _read_file(self, file_path: str, delete: bool = False):
-        content = None
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        if delete: 
-            os.remove(file_path)
-        return content
 
     def test_negative_filter_by_score(self):
         len_before = len(self.combined_dataset)
@@ -193,11 +216,11 @@ class TestCrossLink:
         assert len(filtered_data) == 36
 
     def test_exception_arguments_filter_by_score(self):
-        with pytest.raises(ValueError, match = "max_score is smaller than min_score"):
+        with pytest.raises(ValueError, match = 'max_score is smaller than min_score'):
             filtered_data = CrossLink.filter_by_score(self.combined_dataset, 1, 0)
 
     def test_exception_filter_by_replica(self):
-        with pytest.raises(ValueError, match = "max_replica is smaller than min_replica"):
+        with pytest.raises(ValueError, match = 'max_replica is smaller than min_replica'):
             filtered_data = CrossLink.filter_by_replica(self.combined_dataset, 1, 0)
 
     def test_negative_filter_by_replica(self):
@@ -288,7 +311,7 @@ class TestCrossLink:
 
         for xl in common_first:
             if xl not in common_last:
-                raise ValueError("Common elements are not the same")
+                raise ValueError('Common elements are not the same')
 
         assert len(common_first) == len(common_last)
 
@@ -312,7 +335,7 @@ class TestCrossLink:
             if xl in first_dataset or xl in last_dataset:
                 continue
             else:
-                raise ValueError("Combined elements are not the same")
+                raise ValueError('Combined elements are not the same')
 
         assert len(combined_dataset) == 339 and len(combined_dataset) == len(first_dataset) + len(last_dataset)
 
@@ -327,9 +350,31 @@ class TestCrossLink:
         combined_dataset = CrossLink.combine_selected(self.folder_content, [0, 2])
         for xl in combined_dataset:
             if xl not in first_dataset:
-                raise ValueError("Combined elements are not the same")
+                raise ValueError('Combined elements are not the same')
 
         assert len(combined_dataset) == len(first_dataset)
+
+
+class TestProteinChain:
+   @pytest.fixture(autouse=True)
+   def setup(self):
+        # Current Working Directory
+        self.CWD = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'pcd')
+        self.pcd_path = os.path.join(self.CWD, 'monomer.pcd')
+
+   def test_positive_load_data(self):
+        chain = ProteinChain.load_data(self.pcd_path)
+        assert len(chain) == 2
+
+   def test_exception_wrong_file_format(self):
+        path = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'fasta', 'fasta_1.fasta')
+        with pytest.raises(ValueError, match=f'Invalid file format. Expected PCD, got FASTA'):
+            chain = ProteinChain.load_data(path)
+
+   def test_exception_file_does_not_exhist(self):
+        path = os.path.join(self.CWD, 'none.pcd')
+        with pytest.raises(FileNotFoundError):
+            chain = ProteinChain.load_data(path)
 
 
 class TestProteinStructure:
@@ -345,6 +390,16 @@ class TestProteinStructure:
         bsa_pdb_path = os.path.join(self.CWD, 'BSA.pdb')
         bsa_pdb_structure = ProteinStructure.load_data(bsa_pdb_path)
         assert len(bsa_pdb_structure) == len(bsa_cif_structure) 
+    
+    def test_exception_wrong_file_format(self):
+        path = os.path.join(os.getcwd(), 'tests', 'files', 'data', 'fasta', 'fasta_1.fasta')
+        with pytest.raises(ValueError, match=f'Invalid file format. Expected CIF, PDB, got FASTA'):
+            structure = ProteinStructure.load_data(path)
+
+    def test_exception_file_does_not_exhist(self):
+        path = os.path.join(self.CWD, 'none.pdb')
+        with pytest.raises(FileNotFoundError):
+            structure = ProteinStructure.load_data(path)
 
 
 class TestUtil:
@@ -361,5 +416,5 @@ class TestUtil:
         )
 
     def test_exception_generate_list_of_integers(self):
-        with pytest.raises(ValueError, match=f"Start value 5 is greater than end value 0"):
+        with pytest.raises(ValueError, match='Start value 5 is greater than end value 0'):
              sample = Util.generate_list_of_integers([5, 0])
