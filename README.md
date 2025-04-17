@@ -26,9 +26,6 @@ pip install xldg
 
 This project is licensed under the GNU General Public License v3 (GPLv3).
 
-## Version
-
-Current version: 0.3.1
 
 ## Contributing
 
