@@ -29,5 +29,5 @@ dependencies = [
 package-dir = {"" = "xldg/src"}
 
 [tool.setuptools.packages.find]
-where = ["xldg"]
+where = ["xldg/src"]
 exclude = ["tests*"]
