@@ -1,6 +1,6 @@
 # XLDataGraph
 
-XLDataGraph is a library for crosslinking data analysis and visualization.
+XLDataGraph is a library for MeroX crosslinking data analysis and visualization.
 
 ## Description
 
@@ -15,12 +15,6 @@ XLDataGraph provides tools for analyzing and visualizing crosslinking data. It i
 ```bash
 pip install xldg
 ```
-
-## Dependencies
-
-- requests >= 2.32.3
-- pyCirclize >= 1.6.0
-- matplotlib_venn >= 1.1.2
 
 ## License
 
