@@ -62,6 +62,46 @@ class CircosConfig:
     plot_intraprotein_xls: bool = True
     plot_homotypical_xls: bool = True
 
+    # XL colors
+    heterotypic_intraprotein_xl_color = '#21a2ed'
+    heterotypic_interprotein_xl_color = '#00008B'
+    homotypic_xl_color = '#ed2b21'
+    general_xl_color = '#7d8082'
+
+    def set_legend(self, legend: str, font_size: int = 14) -> None:
+        self.legend = legend
+        self.legend_font_size = font_size
+
+    def set_title(self, title: str, font_size: int = 14) -> None:
+        self.title = title
+        self.title_font_size = font_size
+
+    def filter_crosslinks(self, 
+        min_replica: int = 1,
+        max_replica: int = sys.maxsize,
+        plot_interprotein_xls: bool = True,
+        plot_intraprotein_xls: bool = True,
+        plot_homotypical_xls: bool = True
+        ) -> None:
+
+        self.min_rep = min_replica
+        self.max_rep = max_replica
+        self.plot_interprotein_xls = plot_interprotein_xls
+        self.plot_intraprotein_xls = plot_intraprotein_xls
+        self.plot_homotypical_xls = plot_homotypical_xls
+
+    def set_crosslink_colors(self, 
+        heterotypic_intraprotein_xl_color = '#21a2ed', 
+        heterotypic_interprotein_xl_color = '#00008B', 
+        homotypic_xl_color = '#ed2b21', 
+        general_xl_color = '#7d8082'
+        ) -> None:
+
+        self.heterotypic_intraprotein_xl_color = _valid_hex_color(heterotypic_intraprotein_xl_color)
+        self.heterotypic_interprotein_xl_color = _valid_hex_color(heterotypic_interprotein_xl_color)
+        self.homotypic_xl_color = _valid_hex_color(homotypic_xl_color)
+        self.general_xl_color = _valid_hex_color(general_xl_color)
+
 
 class Circos:  
     def __init__(self, xls: 'CrossLinkDataset', config: 'CircosConfig'):
@@ -92,12 +132,6 @@ class Circos:
         self.sectors = {prot.prot_gene: prot.seq_length for prot in self.fasta}
         self.prot_colors = self._assign_colors()
         self.circos = circos(self.sectors, space=self.config.space_between_sectors)
-
-        # XL colors
-        self.heterotypic_intraprotein_xl_color = '#21a2ed' # Blue
-        self.heterotypic_interprotein_xl_color ='#00008B' # Dark Blue
-        self.homotypic_xl_color = '#ed2b21' # Red
-        self.general_xl_color = '#7d8082' # Grey
      
     def save(self, path: str) -> None:
         if len(self.xls) == 0:
@@ -193,7 +227,7 @@ class Circos:
 
     def _plot_xls(self) -> None:
         for xl, site_count in self.xls.xls_site_count.items():
-            xl_color = self.heterotypic_intraprotein_xl_color
+            xl_color = self.config.heterotypic_intraprotein_xl_color
             plane = 2
 
             protein_1 = self.fasta.find_gene_by_fasta_header(xl.protein_1)
@@ -202,10 +236,10 @@ class Circos:
                 continue
 
             if xl.is_homotypical:
-                xl_color = self.homotypic_xl_color
+                xl_color = self.config.homotypic_xl_color
                 plane = 3
             elif xl.is_interprotein:
-                xl_color = self.heterotypic_interprotein_xl_color
+                xl_color = self.config.heterotypic_interprotein_xl_color
             
             self.circos.link((protein_1, xl.num_site_1, xl.num_site_1), (protein_2, xl.num_site_2, xl.num_site_2), ec=xl_color, zorder=plane, lw=site_count)
         
@@ -290,23 +324,23 @@ class Circos:
 
         legend_info = []
         if exhist_intraprotein_xl is True and self.config.plot_intraprotein_xls is True:
-            legend_info.append({'label': 'Intraprotein unique XLs', 'color': self.heterotypic_intraprotein_xl_color, 'linewidth': 2})
+            legend_info.append({'label': 'Intraprotein unique XLs', 'color': self.config.heterotypic_intraprotein_xl_color, 'linewidth': 2})
 
         if exhist_interprotein_xl is True and self.config.plot_interprotein_xls is True:
-            legend_info.append({'label': 'Interprotein unique XLs', 'color': self.heterotypic_interprotein_xl_color, 'linewidth': 2}) 
+            legend_info.append({'label': 'Interprotein unique XLs', 'color': self.config.heterotypic_interprotein_xl_color, 'linewidth': 2}) 
 
         if exhist_homotypcal_xl is True and self.config.plot_homotypical_xls is True:
-            legend_info.append({'label': 'Homotypic unique XLs', 'color': self.homotypic_xl_color, 'linewidth': 2})
+            legend_info.append({'label': 'Homotypic unique XLs', 'color': self.config.homotypic_xl_color, 'linewidth': 2})
 
         if self.config.min_rep == 1:
-            legend_info.append({'label': '1-replica unique XLs', 'color': self.general_xl_color, 'linewidth': 1})
+            legend_info.append({'label': '1-replica unique XLs', 'color': self.config.general_xl_color, 'linewidth': 1})
         
         if most_frequent_xl > 1:
             for i in range(2, most_frequent_xl + 1):
                 if i < self.config.min_rep:
                     continue
 
-                legend_info.append({'label': f'{i}-replicas unique XLs', 'color': self.general_xl_color, 'linewidth': i}) 
+                legend_info.append({'label': f'{i}-replicas unique XLs', 'color': self.config.general_xl_color, 'linewidth': i}) 
         
         legend_handles = [Line2D([0], [0], color=info['color'], linewidth=info['linewidth'], label=info['label']) for info in legend_info]
         self.fig.legend(handles=legend_handles, loc='upper right', bbox_to_anchor=(self.config.xl_legend_distance, 1), fontsize=self.config.legend_font_size)
@@ -314,19 +348,6 @@ class Circos:
     def _plot_title(self) -> None:
         if self.config.title is not None:    
             self.fig.text(0.5, 1.05, self.config.title, ha='center', va='center', fontsize=self.config.title_font_size)
-    
-    def set_colors(
-                  self, 
-                  heterotypic_intraprotein_xl_color = '#21a2ed', 
-                  heterotypic_interprotein_xl_color = '#00008B', 
-                  homotypic_xl_color = '#ed2b21', 
-                  general_xl_color = '#7d8082'
-                  ) -> None:
-
-        self.heterotypic_intraprotein_xl_color = _valid_hex_color(heterotypic_intraprotein_xl_color)
-        self.heterotypic_interprotein_xl_color = _valid_hex_color(heterotypic_interprotein_xl_color)
-        self.homotypic_xl_color = _valid_hex_color(homotypic_xl_color)
-        self.general_xl_color = _valid_hex_color(general_xl_color)
 
 
 @dataclass
@@ -335,100 +356,63 @@ class VennConfig:
     label_2: Optional[str] = None
     label_3: Optional[str] = None
     title: Optional[str] = None
-    title_font: int = 16
-    legend_font: int = 16
+    label_font: int = 16
+    title_font: int = 16 
     figsize: Tuple[float, float] = (9, 9)
 
+    # Colors
+    first_color = '#9AE66E'  # pastel green
+    second_color = '#FAF278'  # pastel yellow
+    third_color = '#FF9AA2'   # pastel pink
+    overlap_12 = '#87D5F8'    # pastel blue
+    overlap_13 = '#C3B1E1'    # pastel purple
+    overlap_23 = '#FFDAC1'    # pastel orange
+    overlap_123 = '#FFFFD8'  # pastel light yellow
 
-class Venn2:
-    def __init__(self,
-                 xls_list1: 'CrossLinkDataset', 
-                 xls_list2: 'CrossLinkDataset', 
-                 config: 'VennConfig'
-                 ):
+    def set_venn2_lables(self,
+        label_1: str,
+        label_2: str,
+        font_size: int = 16
+        ) -> None:
 
-        self.config = copy.deepcopy(config)
-        self.first_color = '#9AE66E'  # pastel green
-        self.second_color = '#FAF278'  # pastel yellow
-        self.overlap_color = '#87D5F8'  # pastel blue
-        
-        self.fig = plt.figure(figsize=self.config.figsize)
-        
-        set1 = set([str(sublist) for sublist in xls_list1])
-        set2 = set([str(sublist) for sublist in xls_list2])
+        self.label_1 = label_1
+        self.label_2 = label_2
+        self.label_font = font_size
 
-        self.venn = venn2([set1, set2], (self.config.label_1, self.config.label_2))
-    
-    def set_colors(self, 
-                   first_color = '#9AE66E', 
-                   second_color = '#FAF278', 
-                   overlap_color = '#87D5F8'):
+    def set_venn3_lables(self,
+        label_1: str,
+        label_2: str,
+        label_3: str,
+        font_size: int = 16
+        ) -> None:
+
+        self.label_1 = label_1
+        self.label_2 = label_2
+        self.label_3 = label_3
+        self.label_font = font_size
+
+    def set_title(self, title: str, font_size: int = 16) -> None:
+        self.title = title
+        self.title_font = font_size
+
+    def set_venn2_colors(self, 
+        first_color = '#9AE66E', 
+        second_color = '#FAF278', 
+        overlap_12 = '#87D5F8'):
 
         self.first_color = _valid_hex_color(first_color)
         self.second_color = _valid_hex_color(second_color)
-        self.overlap_color = _valid_hex_color(overlap_color)
-        
-    def save(self, path: str):
-        if self.venn.get_patch_by_id('10') is not None:
-            self.venn.get_patch_by_id('10').set_color(self.first_color) 
+        self.overlap_12 = _valid_hex_color(overlap_12)
 
-        if self.venn.get_patch_by_id('01') is not None:
-            self.venn.get_patch_by_id('01').set_color(self.second_color)
-
-        if self.venn.get_patch_by_id('11') is not None:
-            self.venn.get_patch_by_id('11').set_color(self.overlap_color) 
-        
-        # Label the regions with the number of elements
-        for subset in ('10', '01', '11'):
-            if self.venn.get_label_by_id(subset):
-                self.venn.get_label_by_id(subset).set_text(f'{self.venn.get_label_by_id(subset).get_text()}')
-        
-        # Customize font size
-        for text in self.venn.set_labels:
-            text.set_fontsize(self.config.legend_font)
-        
-        for text in self.venn.subset_labels:
-            if text:  # Check if the subset label is not None
-                text.set_fontsize(self.config.legend_font)
-        
-        if self.config.title is not None:
-            plt.title(self.config.title).set_fontsize(self.config.title_font)
-        
-        self.fig.savefig(path)
-        plt.close(self.fig)
-
-
-class Venn3:
-    def __init__(self,
-                 xls_list1: 'CrossLinkDataset', 
-                 xls_list2: 'CrossLinkDataset',
-                 xls_list3: 'CrossLinkDataset',
-                 config: 'VennConfig'
-                 ):
-        self.config = copy.deepcopy(config)
-        self.first_color = '#9AE66E'  # pastel green
-        self.second_color = '#FAF278'  # pastel yellow
-        self.third_color = '#FF9AA2'   # pastel pink
-        self.overlap_12 = '#87D5F8'   # pastel blue
-        self.overlap_13 = '#C3B1E1'   # pastel purple
-        self.overlap_23 = '#FFDAC1'   # pastel orange
-        self.overlap_123 = '#FFFFD8'  # pastel light yellow
-        
-        self.fig = plt.figure(figsize=self.config.figsize)
-        
-        set1 = set([str(sublist) for sublist in xls_list1])
-        set2 = set([str(sublist) for sublist in xls_list2])
-        set3 = set([str(sublist) for sublist in xls_list3])
-        self.venn = venn3([set1, set2, set3], (self.config.label_1, self.config.label_2, self.config.label_3))
-    
-    def set_colors(self, 
-                   first_color = '#9AE66E',  # pastel green
-                   second_color = '#FAF278',  # pastel yellow
-                   third_color = '#FF9AA2',   # pastel pink
-                   overlap_12 = '#87D5F8',    # pastel blue
-                   overlap_13 = '#C3B1E1',    # pastel purple
-                   overlap_23 = '#FFDAC1',    # pastel orange
-                   overlap_123 = '#FFFFD8'):  # pastel light yellow
+    def set_venn3_colors(self, 
+        first_color = '#9AE66E',   # pastel green
+        second_color = '#FAF278',  # pastel yellow
+        third_color = '#FF9AA2',   # pastel pink
+        overlap_12 = '#87D5F8',    # pastel blue
+        overlap_13 = '#C3B1E1',    # pastel purple
+        overlap_23 = '#FFDAC1',    # pastel orange
+        overlap_123 = '#FFFFD8'    # pastel light yellow
+        ) -> None:  
 
         self.first_color = _valid_hex_color(first_color)
         self.second_color = _valid_hex_color(second_color)
@@ -437,29 +421,89 @@ class Venn3:
         self.overlap_13 = _valid_hex_color(overlap_13)
         self.overlap_23 = _valid_hex_color(overlap_23)
         self.overlap_123 = _valid_hex_color(overlap_123)
+
+class Venn2:
+    def __init__(self,
+        xls_list1: 'CrossLinkDataset', 
+        xls_list2: 'CrossLinkDataset', 
+        config: 'VennConfig'
+        ):
+
+        self.config = copy.deepcopy(config)
+        self.fig = plt.figure(figsize=self.config.figsize)
+        
+        set1 = set([str(sublist) for sublist in xls_list1])
+        set2 = set([str(sublist) for sublist in xls_list2])
+
+        self.venn = venn2([set1, set2], (self.config.label_1, self.config.label_2))
+        
+    def save(self, path: str):
+        if self.venn.get_patch_by_id('10'):
+            self.venn.get_patch_by_id('10').set_color(self.config.first_color) 
+
+        if self.venn.get_patch_by_id('01'):
+            self.venn.get_patch_by_id('01').set_color(self.config.second_color)
+
+        if self.venn.get_patch_by_id('11'):
+            self.venn.get_patch_by_id('11').set_color(self.config.overlap_12) 
+        
+        # Label the regions with the number of elements
+        for subset in ('10', '01', '11'):
+            if self.venn.get_label_by_id(subset):
+                self.venn.get_label_by_id(subset).set_text(f'{self.venn.get_label_by_id(subset).get_text()}')
+        
+        # Customize font size
+        for text in self.venn.set_labels:
+            text.set_fontsize(self.config.label_font)
+        
+        for text in self.venn.subset_labels:
+            if text:
+                text.set_fontsize(self.config.label_font)
+        
+        if self.config.title:
+            plt.title(self.config.title).set_fontsize(self.config.title_font)
+        
+        self.fig.savefig(path)
+        plt.close(self.fig)
+
+
+class Venn3:
+    def __init__(self,
+        xls_list1: 'CrossLinkDataset', 
+        xls_list2: 'CrossLinkDataset',
+        xls_list3: 'CrossLinkDataset',
+        config: 'VennConfig'
+        ):
+        self.config = copy.deepcopy(config)
+        self.fig = plt.figure(figsize=self.config.figsize)
+        
+        set1 = set([str(sublist) for sublist in xls_list1])
+        set2 = set([str(sublist) for sublist in xls_list2])
+        set3 = set([str(sublist) for sublist in xls_list3])
+        self.venn = venn3([set1, set2, set3], (self.config.label_1, self.config.label_2, self.config.label_3))
         
     def save(self, path: str):
         # Set colors for each region
         if self.venn.get_patch_by_id('100') is not None:
-            self.venn.get_patch_by_id('100').set_color(self.first_color)
+            self.venn.get_patch_by_id('100').set_color(self.config.first_color)
 
         if self.venn.get_patch_by_id('010') is not None:
-            self.venn.get_patch_by_id('010').set_color(self.second_color)
+            self.venn.get_patch_by_id('010').set_color(self.config.second_color)
 
         if self.venn.get_patch_by_id('001') is not None:
-            self.venn.get_patch_by_id('001').set_color(self.third_color)
+            self.venn.get_patch_by_id('001').set_color(self.config.third_color)
 
         if self.venn.get_patch_by_id('110') is not None:
-            self.venn.get_patch_by_id('110').set_color(self.overlap_12)
+            self.venn.get_patch_by_id('110').set_color(self.config.overlap_12)
 
         if self.venn.get_patch_by_id('101') is not None:
-            self.venn.get_patch_by_id('101').set_color(self.overlap_13)
+            self.venn.get_patch_by_id('101').set_color(self.config.overlap_13)
 
         if self.venn.get_patch_by_id('011') is not None:
-            self.venn.get_patch_by_id('011').set_color(self.overlap_23)
+            self.venn.get_patch_by_id('011').set_color(self.config.overlap_23)
 
         if self.venn.get_patch_by_id('111') is not None:
-            self.venn.get_patch_by_id('111').set_color(self.overlap_123)
+            self.venn.get_patch_by_id('111').set_color(self.config.overlap_123)
         
         # Label the regions with the number of elements
         for subset in ('100', '010', '001', '110', '101', '011', '111'):
@@ -468,11 +512,11 @@ class Venn3:
         
         # Customize font size
         for text in self.venn.set_labels:
-            text.set_fontsize(self.config.legend_font)
+            text.set_fontsize(self.config.label_font)
         
         for text in self.venn.subset_labels:
             if text:  # Check if the subset label is not None
-                text.set_fontsize(self.config.legend_font)
+                text.set_fontsize(self.config.label_font)
         
         if self.config.title is not None:
             plt.title(self.config.title).set_fontsize(self.config.title_font)

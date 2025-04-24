@@ -68,21 +68,21 @@ class TestCircos:
             )
 
         extended_config = CircosConfig(
-                                 fasta = self.fasta_dataset, 
-                                 domains = self.domains,
-                                 legend = 'This is legend\nSome important information\nMore important information', 
-                                 title = 'Long title of the circos plot', 
-                                 label_interval = 35, 
-                                 space_between_sectors = 10,
-                                 domain_legend_distance = 1.2,
-                                 xl_legend_distance = 1.4,
-                                 xl_counter_distance = -0.1,
-                                 legend_distance = -0.1,
-                                 title_font_size = 20,
-                                 ruler_font_size = 12,
-                                 legend_font_size = 16,
-                                 prot_font_size = 18
-                                 )
+            fasta = self.fasta_dataset, 
+            domains = self.domains,
+            legend = 'This is legend\nSome important information\nMore important information', 
+            title = 'Long title of the circos plot', 
+            label_interval = 35, 
+            space_between_sectors = 10,
+            domain_legend_distance = 1.2,
+            xl_legend_distance = 1.4,
+            xl_counter_distance = -0.1,
+            legend_distance = -0.1,
+            title_font_size = 20,
+            ruler_font_size = 12,
+            legend_font_size = 16,
+            prot_font_size = 18
+            )
 
         basic_circos = Circos(self.combined_data, basic_config)
         extended_circos = Circos(self.combined_data, extended_config)
@@ -107,20 +107,26 @@ class TestCircos:
             )
 
     def test_positive_save_selected_xls(self):   
-        self.homotypic_config = CircosConfig(self.fasta_dataset, 
-                                             plot_interprotein_xls = False, 
-                                             plot_intraprotein_xls = False, 
-                                             plot_homotypical_xls = True)
+        self.homotypic_config = CircosConfig(
+            self.fasta_dataset, 
+            plot_interprotein_xls = False, 
+            plot_intraprotein_xls = False, 
+            plot_homotypical_xls = True
+            )
 
-        self.inter_config = CircosConfig(self.fasta_dataset, 
-                                         plot_interprotein_xls = True, 
-                                         plot_intraprotein_xls = False, 
-                                         plot_homotypical_xls = False)
+        self.inter_config = CircosConfig(
+            self.fasta_dataset, 
+            plot_interprotein_xls = True, 
+            plot_intraprotein_xls = False, 
+            plot_homotypical_xls = False
+            )
 
-        self.intra_config = CircosConfig(self.fasta_dataset, 
-                                         plot_interprotein_xls = False, 
-                                         plot_intraprotein_xls = True, 
-                                         plot_homotypical_xls = False)
+        self.intra_config = CircosConfig(
+            self.fasta_dataset, 
+            plot_interprotein_xls = False, 
+            plot_intraprotein_xls = True, 
+            plot_homotypical_xls = False
+            )
 
         self.homotypic_circos = Circos(self.combined_data, self.homotypic_config)
         self.inter_circos = Circos(self.combined_data, self.inter_config)
@@ -214,18 +220,18 @@ class TestCircos:
         with pytest.raises(ValueError, match = 'CircosConfig max_rep cannot be smaller than min_rep'):
             self.circos = Circos(self.combined_data, self.config)
 
-    def test_default_set_xls_colors(self):
-        default_intra_color = copy.deepcopy(self.circos.heterotypic_intraprotein_xl_color)
-        default_inter_color = copy.deepcopy(self.circos.heterotypic_interprotein_xl_color)
-        default_homo_color = copy.deepcopy(self.circos.homotypic_xl_color)
-        default_general_color = copy.deepcopy(self.circos.general_xl_color)
+    def test_default_set_crosslink_colors(self):
+        default_intra_color = copy.deepcopy(self.config.heterotypic_intraprotein_xl_color)
+        default_inter_color = copy.deepcopy(self.config.heterotypic_interprotein_xl_color)
+        default_homo_color = copy.deepcopy(self.config.homotypic_xl_color)
+        default_general_color = copy.deepcopy(self.config.general_xl_color)
 
         intra_color = '#21a2ed'
         inter_color = '#00008B'
         homo_color = '#ed2b21'
         general_color = '#7d8082'
 
-        self.circos.set_colors()
+        self.config.set_crosslink_colors()
 
         assert (
             # Check default colors
@@ -234,34 +240,34 @@ class TestCircos:
             default_homo_color == homo_color and
             default_general_color == general_color and
             # Check color assignment
-            self.circos.heterotypic_intraprotein_xl_color == intra_color and
-            self.circos.heterotypic_interprotein_xl_color == inter_color and
-            self.circos.homotypic_xl_color == homo_color and
-            self.circos.general_xl_color == general_color
+            self.config.heterotypic_intraprotein_xl_color == intra_color and
+            self.config.heterotypic_interprotein_xl_color == inter_color and
+            self.config.homotypic_xl_color == homo_color and
+            self.config.general_xl_color == general_color
         )
 
-    def test_poditive_set_xls_colors(self):
+    def test_poditive_set_crosslink_colors(self):
         light_gray = '#D3D3D3'
         medium_gray = '#808080'
         dark_gray = '#404040'
         charcoal_gray = '#333333'
-        self.circos.set_colors(light_gray, medium_gray, dark_gray, charcoal_gray)
+        self.config.set_crosslink_colors(light_gray, medium_gray, dark_gray, charcoal_gray)
 
         assert (
-            self.circos.heterotypic_intraprotein_xl_color == light_gray and
-            self.circos.heterotypic_interprotein_xl_color == medium_gray and
-            self.circos.homotypic_xl_color == dark_gray and
-            self.circos.general_xl_color == charcoal_gray
+            self.config.heterotypic_intraprotein_xl_color == light_gray and
+            self.config.heterotypic_interprotein_xl_color == medium_gray and
+            self.config.homotypic_xl_color == dark_gray and
+            self.config.general_xl_color == charcoal_gray
         )
 
-    def test_exception_set_xls_colors(self):
+    def test_exception_set_crosslink_colors(self):
         light_gray = 'Light Grey'
         medium_gray = '#808080'
         dark_gray = '#404040'
         charcoal_gray = '#333333'
 
         with pytest.raises(ValueError, match = f'Invalid hex color: Light Grey'):
-            self.circos.set_colors(light_gray, medium_gray, dark_gray, charcoal_gray)
+            self.config.set_crosslink_colors(light_gray, medium_gray, dark_gray, charcoal_gray)
 
 
 class TestVenn2:
@@ -321,31 +327,25 @@ class TestVenn2:
             len(after_content) == len(reference_content)
             )
 
-    def test_poditive_set_xls_colors(self):
+    def test_poditive_set_venn2_xls_colors(self):
         light_gray = '#D3D3D3'
         medium_gray = '#808080'
         dark_gray = '#404040'
 
-        etalon_data = CrossLink.remove_homotypic(self.combined_data)
-        compare_data = CrossLink.remove_interprotein(self.combined_data)
-        venn2 = Venn2(etalon_data, compare_data, self.config)
-
-        venn2.set_colors(light_gray, medium_gray, dark_gray)
-
+        self.config.set_venn2_colors(light_gray, medium_gray, dark_gray)
         assert (
-            venn2.first_color == light_gray and
-            venn2.second_color == medium_gray and
-            venn2.overlap_color == dark_gray 
+            self.config.first_color == light_gray and
+            self.config.second_color == medium_gray and
+            self.config.overlap_12 == dark_gray 
         )
 
-    def test_exception_set_xls_colors(self):
+    def test_exception_set_venn2_xls_colors(self):
         light_gray = 'Light Grey'
         medium_gray = '#808080'
         dark_gray = '#404040'
-        venn2 = Venn2(self.combined_data, self.combined_data, self.config)
 
         with pytest.raises(ValueError, match = f'Invalid hex color: Light Grey'):
-            venn2.set_colors(light_gray, medium_gray, dark_gray)
+            self.config.set_venn2_colors(light_gray, medium_gray, dark_gray)
 
 
 class TestVenn3:
@@ -417,7 +417,7 @@ class TestVenn3:
             len(after_content) == len(reference_content)
             )
 
-    def test_positive_set_xls_colors(self):
+    def test_positive_set_venn3_xls_colors(self):
         light_red = '#FFCCCC'
         light_green = '#CCFFCC'
         light_blue = '#CCCCFF'
@@ -430,29 +430,34 @@ class TestVenn3:
         second = CrossLink.remove_intraprotein(self.predicted_crosslinks)
         third = self.combined_data
 
+        self.config.set_venn3_colors(
+            light_red, 
+            light_green, 
+            light_blue,
+            red_green, 
+            green_blue, 
+            red_blue, 
+            center
+        )
         venn3 = Venn3(first, second, third, self.config)
 
-        venn3.set_colors(
-            light_red, light_green, light_blue,
-            red_green, green_blue, red_blue, center
-        )
         save_path = os.path.join(self.CWD, 'venn3_test_colors.svg')
         venn3.save(save_path)
         content = _read_file(save_path, True)
         reference = _read_file(os.path.join(self.CWD, 'venn3_reference_colors.svg'))
 
         assert (
-            venn3.first_color == light_red and
-            venn3.second_color == light_green and
-            venn3.third_color == light_blue and
-            venn3.overlap_12 == red_green and
-            venn3.overlap_13 == green_blue and
-            venn3.overlap_23 == red_blue and
-            venn3.overlap_123 == center and
+            self.config.first_color == light_red and
+            self.config.second_color == light_green and
+            self.config.third_color == light_blue and
+            self.config.overlap_12 == red_green and
+            self.config.overlap_13 == green_blue and
+            self.config.overlap_23 == red_blue and
+            self.config.overlap_123 == center and
             len(content) == len(reference)
         )
 
-    def test_exception_set_xls_colors(self):
+    def test_exception_set_venn3_xls_colors(self):
         invalid_color = 'Beautiful Color'
         light_green = '#CCFFCC'
         light_blue = '#CCCCFF'
@@ -461,13 +466,8 @@ class TestVenn3:
         red_blue = '#FF99FF'
         center = '#FFFFFF'
         
-        first_data = CrossLink.remove_homotypic(self.combined_data)
-        second_data = CrossLink.remove_interprotein(self.combined_data)
-        third_data = CrossLink.remove_intraprotein(self.combined_data)
-        venn3 = Venn3(first_data, second_data, third_data, self.config)
-        
         with pytest.raises(ValueError, match=f'Invalid hex color: Beautiful Color'):
-            venn3.set_colors(
+            self.config.set_venn3_colors(
                 invalid_color, 
                 light_green, 
                 light_blue,

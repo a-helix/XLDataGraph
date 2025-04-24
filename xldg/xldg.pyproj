@@ -32,7 +32,6 @@
     <Compile Include="examples\circus.py" />
     <Compile Include="examples\gephi.py" />
     <Compile Include="examples\gephi_export.py" />
-    <Compile Include="src\xldg\api.py" />
     <Compile Include="src\xldg\graphics.py" />
     <Compile Include="src\xldg\data.py" />
     <Compile Include="src\xldg\core.py" />
