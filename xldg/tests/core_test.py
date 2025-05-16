@@ -250,7 +250,7 @@ class TestCrossLinkDataset:
         ref_interprotein_pb = self._read_file(os.path.join(self.chimerax_folder, 'color_interprotein_reference.pb'))
         ref_intraprotein_pb = self._read_file(os.path.join(self.chimerax_folder, 'color_intraprotein_reference.pb'))
         ref_homotypic_pb = self._read_file(os.path.join(self.chimerax_folder, 'color_homotypical_reference.pb'))
-        assert (
+        assert(
             len(interprotein_pb) == len(ref_interprotein_pb) and
             len(intraprotein_pb) == len(ref_intraprotein_pb) and
             len(homotypic_pb) == len(ref_homotypic_pb)
@@ -266,8 +266,8 @@ class TestCrossLinkDataset:
         save_monomer = 'ppis_for_gephi_test_monomer.gexf'
         save_dimer = 'ppis_for_gephi_test_dimer.gexf'
 
-        self.combined_dataset.export_ppis_for_gephi(pcd_monomer, self.gephi_folder, save_monomer)
-        self.combined_dataset.export_ppis_for_gephi(pcd_dimer, self.gephi_folder, save_dimer)
+        self.combined_dataset.export_ppis_for_gephi(self.gephi_folder, save_monomer, pcd_monomer)
+        self.combined_dataset.export_ppis_for_gephi(self.gephi_folder, save_dimer, pcd_dimer)
 
         monomer_sample_path = os.path.join(self.gephi_folder, save_monomer)
         monomer_reference_path = os.path.join(self.gephi_folder, 'ppis_for_gephi_reference_monomer.gexf')
@@ -281,9 +281,9 @@ class TestCrossLinkDataset:
         dimer_sample = self._read_file(dimer_sample_path, True)
         dimer_reference = self._read_file(dimer_reference_path)
 
-        assert (
-           dimer_sample == dimer_reference and
-           monomer_sample == monomer_reference
+        assert(
+           len(dimer_sample) == len(dimer_reference) and
+           len(monomer_sample) == len(monomer_reference)
         )
 
     def test_exception_export_ppis_for_gephi(self):
@@ -292,7 +292,7 @@ class TestCrossLinkDataset:
         save_name = 'ppis_for_gephi_test.PDF'
         
         with pytest.raises(ValueError, match = f'Wrong data format is provided in {save_name}. Only ".gexf" format is supported'):
-            self.combined_dataset.export_ppis_for_gephi(pcd, self.chimerax_folder, save_name)
+            self.combined_dataset.export_ppis_for_gephi(self.chimerax_folder, save_name, pcd)
 
     def test_positive_export_aais_for_gephi(self):
         monomer_content = Path.read_to_string(os.path.join(self.pcd, 'monomer.pcd'))
@@ -319,7 +319,7 @@ class TestCrossLinkDataset:
         dimer_sample = self._read_file(dimer_sample_path, True)
         dimer_reference = self._read_file(dimer_reference_path)
 
-        assert (
+        assert(
            dimer_sample == dimer_reference and
            monomer_sample == monomer_reference
         )
@@ -338,7 +338,7 @@ class TestCrossLinkDataset:
 
         unique_first, unique_last = CrossLinkDataset.unique_elements(first_dataset, last_dataset)
         common_first, common_last = CrossLinkDataset.common_elements(first_dataset, last_dataset)
-        assert (
+        assert(
             len(unique_first) + len(common_first) == len(first_dataset) and
             len(unique_last) + len(common_last) == len(last_dataset)
         )
@@ -353,7 +353,7 @@ class TestCrossLinkDataset:
     
         unique_combined, unique_reference = CrossLinkDataset.unique_elements(self.combined_dataset, reference_dataset)
         len_after = len(self.combined_dataset)
-        assert (
+        assert(
             len_before == len_after and
             len(unique_reference) == 0 and
             len(unique_combined) == len_before

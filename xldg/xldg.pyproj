@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>a9d1593d-9273-4f28-aa52-952659dd5c68</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>examples\chimerax\predict_crosslinks.py</StartupFile>
+    <StartupFile>examples\chimerax\venn_diagram.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -32,6 +32,7 @@
     <Compile Include="examples\circus.py" />
     <Compile Include="examples\gephi.py" />
     <Compile Include="examples\gephi_export.py" />
+    <Compile Include="examples\venn_diagram.py" />
     <Compile Include="src\xldg\graphics.py" />
     <Compile Include="src\xldg\data.py" />
     <Compile Include="src\xldg\core.py" />

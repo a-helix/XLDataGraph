@@ -424,16 +424,16 @@ class VennConfig:
 
 class Venn2:
     def __init__(self,
-        xls_list1: 'CrossLinkDataset', 
-        xls_list2: 'CrossLinkDataset', 
+        dataset1: 'CrossLinkDataset', 
+        dataset2: 'CrossLinkDataset', 
         config: 'VennConfig'
         ):
 
         self.config = copy.deepcopy(config)
         self.fig = plt.figure(figsize=self.config.figsize)
         
-        set1 = set([str(sublist) for sublist in xls_list1])
-        set2 = set([str(sublist) for sublist in xls_list2])
+        set1 = set([str(sublist) for sublist in dataset1])
+        set2 = set([str(sublist) for sublist in dataset2])
 
         self.venn = venn2([set1, set2], (self.config.label_1, self.config.label_2))
         
@@ -469,17 +469,17 @@ class Venn2:
 
 class Venn3:
     def __init__(self,
-        xls_list1: 'CrossLinkDataset', 
-        xls_list2: 'CrossLinkDataset',
-        xls_list3: 'CrossLinkDataset',
+        dataset1: 'CrossLinkDataset', 
+        dataset2: 'CrossLinkDataset',
+        dataset3: 'CrossLinkDataset',
         config: 'VennConfig'
         ):
         self.config = copy.deepcopy(config)
         self.fig = plt.figure(figsize=self.config.figsize)
         
-        set1 = set([str(sublist) for sublist in xls_list1])
-        set2 = set([str(sublist) for sublist in xls_list2])
-        set3 = set([str(sublist) for sublist in xls_list3])
+        set1 = set([str(sublist) for sublist in dataset1])
+        set2 = set([str(sublist) for sublist in dataset2])
+        set3 = set([str(sublist) for sublist in dataset3])
         self.venn = venn3([set1, set2, set3], (self.config.label_1, self.config.label_2, self.config.label_3))
         
     def save(self, path: str):

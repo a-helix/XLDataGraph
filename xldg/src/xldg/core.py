@@ -1,4 +1,5 @@
 ﻿from dataclasses import dataclass
+from optparse import Option
 from typing import List, Tuple, Dict, Set, Iterator, Optional
 import os
 import sys
@@ -1206,27 +1207,33 @@ class CrossLinkDataset:
         _write_to_pb_file(buffer_heterotypical_intra_xl, f'{file_name}_intraprotein_xl_{xl_frequency}_rep.pb')
         _write_to_pb_file(buffer_homotypical_xl, f'{file_name}_homotypical_xl_{xl_frequency}_rep.pb')
 
-    def export_ppis_for_gephi(
-        self, 
-        pcd: ProteinChainDataset, 
+    def export_ppis_for_gephi(self, 
         folder_path: str, 
-        file_name: str
+        file_name: str,
+        pcd: Optional[ProteinChainDataset] = None
     ) -> None:
-
         save_path = self._validate_gephi_format(folder_path, file_name)
+    
         node_buffer = dict()
+        if pcd:
+            for protein_id, chain_list in pcd:
+                for chain_id in chain_list:
+                    node_buffer[chain_id] = protein_id
+        else:
+            for xl in self.xls_site_count:
+                validated_xl = self._validate_terminus_sites(xl)
+                node_buffer[validated_xl.protein_1] = validated_xl.protein_1
+                node_buffer[validated_xl.protein_2] = validated_xl.protein_2
+    
         edge_buffer = dict()
-    
-        for key, value in pcd:
-            for i in value:
-                node_buffer[i] = key
-    
+
         for xl in self.xls_site_count:
+            xl = self._validate_terminus_sites(xl)
             for chain1, id1 in node_buffer.items():
                 for chain2, id2 in node_buffer.items():
-                    if chain1 == chain2:
+                    if chain1 == chain2 or xl.protein_1 == xl.protein_2:
                         continue
-                    xl = self._validate_terminus_sites(xl)
+
                     if xl.protein_1 == id1 and xl.protein_2 == id2:
                         pair = tuple(sorted((chain1, chain2)))
                         edge_buffer[pair] = edge_buffer.get(pair, 0) + 1
@@ -1234,10 +1241,10 @@ class CrossLinkDataset:
         self._create_gexf(save_path, node_buffer, edge_buffer)
 
     def export_aais_for_gephi(self, 
-                              pcd: ProteinChainDataset, 
-                              folder_path: str, 
-                              file_name: str 
-                              ) -> None:
+        pcd: ProteinChainDataset, 
+        folder_path: str, 
+        file_name: str 
+    ) -> None:
 
         save_path = self._validate_gephi_format(folder_path, file_name)
         node_buffer = dict()
