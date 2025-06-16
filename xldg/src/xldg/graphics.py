@@ -60,12 +60,12 @@ class CircosConfig:
     max_rep: int = sys.maxsize
     plot_interprotein_xls: bool = True
     plot_intraprotein_xls: bool = True
-    plot_homotypical_xls: bool = True
+    plot_homeotypical_xls: bool = True
 
     # XL colors
     heterotypic_intraprotein_xl_color = '#21a2ed'
     heterotypic_interprotein_xl_color = '#00008B'
-    homotypic_xl_color = '#ed2b21'
+    homeotypic_xl_color = '#ed2b21'
     general_xl_color = '#7d8082'
 
     def set_legend(self, legend: str, font_size: int = 14) -> None:
@@ -81,25 +81,25 @@ class CircosConfig:
         max_replica: int = sys.maxsize,
         plot_interprotein_xls: bool = True,
         plot_intraprotein_xls: bool = True,
-        plot_homotypical_xls: bool = True
+        plot_homeotypical_xls: bool = True
         ) -> None:
 
         self.min_rep = min_replica
         self.max_rep = max_replica
         self.plot_interprotein_xls = plot_interprotein_xls
         self.plot_intraprotein_xls = plot_intraprotein_xls
-        self.plot_homotypical_xls = plot_homotypical_xls
+        self.plot_homeotypical_xls = plot_homeotypical_xls
 
     def set_crosslink_colors(self, 
         heterotypic_intraprotein_xl_color = '#21a2ed', 
         heterotypic_interprotein_xl_color = '#00008B', 
-        homotypic_xl_color = '#ed2b21', 
+        homeotypic_xl_color = '#ed2b21', 
         general_xl_color = '#7d8082'
         ) -> None:
 
         self.heterotypic_intraprotein_xl_color = _valid_hex_color(heterotypic_intraprotein_xl_color)
         self.heterotypic_interprotein_xl_color = _valid_hex_color(heterotypic_interprotein_xl_color)
-        self.homotypic_xl_color = _valid_hex_color(homotypic_xl_color)
+        self.homeotypic_xl_color = _valid_hex_color(homeotypic_xl_color)
         self.general_xl_color = _valid_hex_color(general_xl_color)
 
 
@@ -114,8 +114,8 @@ class Circos:
             self.xls.remove_interprotein_crosslinks()
         if self.config.plot_intraprotein_xls is False:
             self.xls.remove_intraprotein_crosslinks()
-        if self.config.plot_homotypical_xls is False:
-            self.xls.remove_homotypic_crosslinks()
+        if self.config.plot_homeotypical_xls is False:
+            self.xls.remove_homeotypic_crosslinks()
 
 
         self.fasta = copy.deepcopy(config.fasta)
@@ -235,13 +235,15 @@ class Circos:
             if protein_1 == None or protein_2 == None:
                 continue
 
-            if xl.is_homotypical:
-                xl_color = self.config.homotypic_xl_color
+            if xl.is_homeotypical:
+                xl_color = self.config.homeotypic_xl_color
                 plane = 3
             elif xl.is_interprotein:
                 xl_color = self.config.heterotypic_interprotein_xl_color
             
-            self.circos.link((protein_1, xl.num_site_1, xl.num_site_1), (protein_2, xl.num_site_2, xl.num_site_2), ec=xl_color, zorder=plane, lw=site_count)
+            self.circos.link((protein_1, xl.num_site_1, xl.num_site_1), 
+                             (protein_2, xl.num_site_2, xl.num_site_2), 
+                             ec=xl_color, zorder=plane, lw=site_count)
         
         self.fig = self.circos.plotfig(figsize = self.config.figsize)
     
@@ -299,7 +301,10 @@ class Circos:
                 reference_buffer.append(reference)
         
         if self.config.plot_domain_legend is True and len(legend_patches) != 0:
-            self.fig.legend(handles=legend_patches, loc='lower right', bbox_to_anchor=(self.config.domain_legend_distance, 0), fontsize=self.config.legend_font_size)
+            self.fig.legend(handles=legend_patches, 
+                            loc='lower right', 
+                            bbox_to_anchor=(self.config.domain_legend_distance, 0), 
+                            fontsize=self.config.legend_font_size)
     
     def _plot_xl_legend(self) -> None:
         most_frequent_xl = 0
@@ -311,7 +316,7 @@ class Circos:
             if most_frequent_xl < site_count:
                 most_frequent_xl = site_count
 
-            if xl.is_homotypical:
+            if xl.is_homeotypical:
                 exhist_homotypcal_xl = True
             elif xl.is_interprotein:
                 exhist_interprotein_xl = True
@@ -329,8 +334,8 @@ class Circos:
         if exhist_interprotein_xl is True and self.config.plot_interprotein_xls is True:
             legend_info.append({'label': 'Interprotein unique XLs', 'color': self.config.heterotypic_interprotein_xl_color, 'linewidth': 2}) 
 
-        if exhist_homotypcal_xl is True and self.config.plot_homotypical_xls is True:
-            legend_info.append({'label': 'Homotypic unique XLs', 'color': self.config.homotypic_xl_color, 'linewidth': 2})
+        if exhist_homotypcal_xl is True and self.config.plot_homeotypical_xls is True:
+            legend_info.append({'label': 'Homeotypic unique XLs', 'color': self.config.homeotypic_xl_color, 'linewidth': 2})
 
         if self.config.min_rep == 1:
             legend_info.append({'label': '1-replica unique XLs', 'color': self.config.general_xl_color, 'linewidth': 1})
@@ -343,7 +348,10 @@ class Circos:
                 legend_info.append({'label': f'{i}-replicas unique XLs', 'color': self.config.general_xl_color, 'linewidth': i}) 
         
         legend_handles = [Line2D([0], [0], color=info['color'], linewidth=info['linewidth'], label=info['label']) for info in legend_info]
-        self.fig.legend(handles=legend_handles, loc='upper right', bbox_to_anchor=(self.config.xl_legend_distance, 1), fontsize=self.config.legend_font_size)
+        self.fig.legend(handles=legend_handles, 
+                        loc='upper right', 
+                        bbox_to_anchor=(self.config.xl_legend_distance, 1), 
+                        fontsize=self.config.legend_font_size)
     
     def _plot_title(self) -> None:
         if self.config.title is not None:    

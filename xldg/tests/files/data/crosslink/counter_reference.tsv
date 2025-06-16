@@ -1,4 +1,4 @@
-software	protein_1	peptide_1	from_1	to_1	site_1	protein_2	peptide_2	from_2	to_2	site_2	interprotein	homotypical	replicas
+software	protein_1	peptide_1	from_1	to_1	site_1	protein_2	peptide_2	from_2	to_2	site_2	interprotein	homeotypical	replicas
 MeroX	>GSTIMP1-cleav	[GSPEFJNK]	4	11	S2	>Heavy_IMP1	[jnkly]	9	13	k3	True	False	1
 MeroX	>GSTIMP1-cleav	[GGFGSR]	177	182	S5	>Heavy_IMP1	[iygk]	478	481	y2	True	False	1
 MeroX	>GSTIMP1-cleav	[VKSGYAF]	43	49	S3	>Heavy_IMP1	[qrsr]	86	89	s3	True	False	1

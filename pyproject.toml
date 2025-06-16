@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xldg"
-version = "0.3.3"
+version = "0.3.4"
 description = "XLDataGraph is a library for crosslinking data analysis and visualization."
 readme = "README.md"
 authors = [{name = "a-helix"}]

@@ -247,20 +247,20 @@ class CrossLink:
         raise TypeError(f'Expected CrossLinkDataset or List[CrossLinkDataset], got {type(dataset)}')
 
     @staticmethod
-    def remove_homotypic(
+    def remove_homeotypic(
         dataset: Union['CrossLinkDataset', List['CrossLinkDataset']]
     ) -> Union['CrossLinkDataset', List['CrossLinkDataset']]:
 
         dataset = copy.deepcopy(dataset)
         if isinstance(dataset, CrossLinkDataset):
-            dataset.remove_homotypic_crosslinks()
+            dataset.remove_homeotypic_crosslinks()
             return dataset
     
         if isinstance(dataset, list):
             for data in dataset:
                 if not isinstance(data, CrossLinkDataset):
                     raise TypeError(f'Expected CrossLinkDataset, got {type(data)}')
-                data.remove_homotypic_crosslinks()
+                data.remove_homeotypic_crosslinks()
             return dataset
 
         raise TypeError(f'Expected CrossLinkDataset or List[CrossLinkDataset], got {type(dataset)}')

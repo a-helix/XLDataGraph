@@ -12,8 +12,6 @@
       <edge id="1" source="A" target="D" weight="125"/>
       <edge id="2" source="B" target="C" weight="125"/>
       <edge id="3" source="B" target="D" weight="125"/>
-      <edge id="4" source="A" target="B" weight="148"/>
-      <edge id="5" source="C" target="D" weight="212"/>
     </edges>
   </graph>
 </gexf>

@@ -131,10 +131,10 @@ class CrossLinkEntity:
             raise Exception(f'{self.software} is not supported.')
 
         self.is_interprotein = (self.protein_1 != self.protein_2)
-        self.is_homotypical = (self.protein_1 == self.protein_2 and (self.num_site_1 == self.num_site_2 
+        self.is_homeotypical = (self.protein_1 == self.protein_2 and (self.num_site_1 == self.num_site_2 
                                                                      or self.peptide_1 == self.peptide_2))
         if self.software == 'Prediction':
-            self.is_homotypical = self.protein_1 == self.protein_2 and self.num_site_1 == self.num_site_2
+            self.is_homeotypical = self.protein_1 == self.protein_2 and self.num_site_1 == self.num_site_2
     
     def __eq__(self, other):
         direct_match = None
@@ -174,7 +174,7 @@ class CrossLinkEntity:
             return hash((self.protein_2, self.num_site_2, self.protein_1, self.num_site_1))
     
     def __str__(self):
-        return f'{self.protein_1},{self.num_site_1},{self.protein_2},{self.num_site_2},{self.is_interprotein},{self.is_homotypical}'
+        return f'{self.protein_1},{self.num_site_1},{self.protein_2},{self.num_site_2},{self.is_interprotein},{self.is_homeotypical}'
 
 
 @dataclass(frozen=True)
@@ -989,7 +989,7 @@ class CrossLinkDataset:
     def remove_interprotein_crosslinks(self) -> 'CrossLinkDataset':
         filtered_xls = []
         for xl in self.xls:
-            if xl.is_homotypical:
+            if xl.is_homeotypical:
                 filtered_xls.append(xl)
                 continue
             if xl.is_interprotein is False:
@@ -1001,7 +1001,7 @@ class CrossLinkDataset:
     def remove_intraprotein_crosslinks(self) -> 'CrossLinkDataset':
         filtered_xls = []
         for xl in self.xls:
-            if xl.is_homotypical:
+            if xl.is_homeotypical:
                 filtered_xls.append(xl)
                 continue
             if xl.is_interprotein is True:
@@ -1010,10 +1010,10 @@ class CrossLinkDataset:
         self._update_xls_data(filtered_xls)
         return self
 
-    def remove_homotypic_crosslinks(self) -> 'CrossLinkDataset':
+    def remove_homeotypic_crosslinks(self) -> 'CrossLinkDataset':
         filtered_xls = []
         for xl in self.xls:
-            if xl.is_homotypical is False:
+            if xl.is_homeotypical is False:
                 filtered_xls.append(xl)
 
         self._update_xls_data(filtered_xls)
@@ -1070,7 +1070,7 @@ class CrossLinkDataset:
             f'software{separator}protein_1{separator}peptide_1{separator}from_1{separator}'
             f'to_1{separator}site_1{separator}protein_2{separator}peptide_2{separator}'
             f'from_2{separator}to_2{separator}site_2{separator}interprotein{separator}'
-            f'homotypical{separator}replicas\n'
+            f'homeotypical{separator}replicas\n'
         )
 
         with open(file, 'w') as file:
@@ -1081,7 +1081,7 @@ class CrossLinkDataset:
                     f'{xl.from_1}{separator}{xl.to_1}{separator}{xl.site_1}{separator}'
                     f'{xl.protein_2}{separator}{xl.peptide_2}{separator}{xl.from_2}{separator}'
                     f'{xl.to_2}{separator}{xl.site_2}{separator}{xl.is_interprotein}{separator}'
-                    f'{xl.is_homotypical}{separator}{frequency}\n'
+                    f'{xl.is_homeotypical}{separator}{frequency}\n'
                 )
 
     def save_crosslinks(self, folder_path: str, file_name: str, separator: str = '\t'):
@@ -1093,7 +1093,7 @@ class CrossLinkDataset:
             f'software{separator}protein_1{separator}peptide_1{separator}from_1{separator}'
             f'to_1{separator}site_1{separator}protein_2{separator}peptide_2{separator}'
             f'from_2{separator}to_2{separator}site_2{separator}interprotein{separator}'
-            f'homotypical{separator}score\n'
+            f'homeotypical{separator}score\n'
         )
 
         with open(file, 'w') as file:
@@ -1104,7 +1104,7 @@ class CrossLinkDataset:
                     f'{xl.from_1}{separator}{xl.to_1}{separator}{xl.site_1}{separator}'
                     f'{xl.protein_2}{separator}{xl.peptide_2}{separator}{xl.from_2}{separator}'
                     f'{xl.to_2}{separator}{xl.site_2}{separator}{xl.is_interprotein}{separator}'
-                    f'{xl.is_homotypical}{separator}{xl.score}\n'
+                    f'{xl.is_homeotypical}{separator}{xl.score}\n'
                 )
 
     def export_for_chimerax(self, 
@@ -1163,11 +1163,11 @@ class CrossLinkDataset:
 
         xl_frequencies: Set[int] = set(self.xls_site_count.values())
         for xl_frequency in xl_frequencies:
-            buffer_homotypical_xl = []
+            buffer_homeotypical_xl = []
             buffer_heterotypical_intra_xl = []
             buffer_heterotypical_inter_xl = []
 
-            outliers_buffer_homotypical_xl = []
+            outliers_buffer_homeotypical_xl = []
             outliers_buffer_heterotypical_intra_xl = []
             outliers_buffer_heterotypical_inter_xl = []
             distance = 0
@@ -1178,11 +1178,11 @@ class CrossLinkDataset:
 
                 crosslink = self._validate_terminus_sites(key)
                 chains = pcd[crosslink.protein_1] 
-                if crosslink.is_homotypical:
+                if crosslink.is_homeotypical:
                     for c1 in chains:
                         for c2 in chains:
                             if c1 != c2:  # Ensure unique chain pairing
-                                _clasify_crosslink(crosslink, buffer_homotypical_xl, outliers_buffer_homotypical_xl, c1, c2)
+                                _clasify_crosslink(crosslink, buffer_homeotypical_xl, outliers_buffer_homeotypical_xl, c1, c2)
 
                 elif crosslink.is_interprotein:
                     chain1 = pcd[crosslink.protein_1]
@@ -1201,11 +1201,11 @@ class CrossLinkDataset:
         if protein_structure:
             _write_to_pb_file(outliers_buffer_heterotypical_inter_xl, f'outliers_{file_name}_interprotein_xl_{xl_frequency}_rep.pb')
             _write_to_pb_file(outliers_buffer_heterotypical_intra_xl, f'outliers_{file_name}_intraprotein_xl_{xl_frequency}_rep.pb')
-            _write_to_pb_file(outliers_buffer_homotypical_xl, f'outliers_{file_name}_homotypical_xl_{xl_frequency}_rep.pb')
+            _write_to_pb_file(outliers_buffer_homeotypical_xl, f'outliers_{file_name}_homeotypical_xl_{xl_frequency}_rep.pb')
 
         _write_to_pb_file(buffer_heterotypical_inter_xl, f'{file_name}_interprotein_xl_{xl_frequency}_rep.pb')
         _write_to_pb_file(buffer_heterotypical_intra_xl, f'{file_name}_intraprotein_xl_{xl_frequency}_rep.pb')
-        _write_to_pb_file(buffer_homotypical_xl, f'{file_name}_homotypical_xl_{xl_frequency}_rep.pb')
+        _write_to_pb_file(buffer_homeotypical_xl, f'{file_name}_homeotypical_xl_{xl_frequency}_rep.pb')
 
     def export_ppis_for_gephi(self, 
         folder_path: str, 
@@ -1589,16 +1589,16 @@ class DomainDataset:
         return len(self.domains)
 
     def __iter__(self) -> Iterator['DomainEntity']:
-        self._index = 0  # Reset index for new iteration
-        return self
+        for domain in self.domains:
+            yield domain
     
-    def __next__(self) -> 'DomainEntity':
-        if self._index < self._size:
-            domain = self.domains[self._index]
-            self._index += 1
-            return domain
-        else:
-            raise StopIteration
+    # def __next__(self) -> 'DomainEntity':
+    #     if self._index < self._size:
+    #         domain = self.domains[self._index]
+    #         self._index += 1
+    #         return domain
+    #     else:
+    #         raise StopIteration
 
     def filter_by_fasta(self, FastaDataset: 'FastaDataset') -> 'DomainDataset':
         filtered_domains = []

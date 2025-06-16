@@ -181,14 +181,14 @@ class TestCrossLinkDataset:
         self.combined_dataset.remove_intraprotein_crosslinks()
         assert len(self.combined_dataset) == 138
 
-    def test_positive_remove_homotypic_crosslinks(self):
-        self.combined_dataset.remove_homotypic_crosslinks()
+    def test_positive_remove_homeotypic_crosslinks(self):
+        self.combined_dataset.remove_homeotypic_crosslinks()
         assert len(self.combined_dataset) == 420
 
     def test_positive_remove_all_xls(self):
         self.combined_dataset.remove_interprotein_crosslinks()
         self.combined_dataset.remove_intraprotein_crosslinks()
-        self.combined_dataset.remove_homotypic_crosslinks()
+        self.combined_dataset.remove_homeotypic_crosslinks()
         assert len(self.combined_dataset) == 0
 
     def test_positive_blank_replica_counter(self):
@@ -232,7 +232,7 @@ class TestCrossLinkDataset:
     def test_positive_dimer_export_for_chimerax(self):
         self.combined_dataset.blank_replica_counter()
         self.combined_dataset.remove_intraprotein_crosslinks()
-        self.combined_dataset.remove_homotypic_crosslinks()
+        self.combined_dataset.remove_homeotypic_crosslinks()
         self.combined_dataset.export_for_chimerax(self.dimer_pcd, self.chimerax_folder, 'dimer')
 
         content1 = self._read_file(os.path.join(self.chimerax_folder, 'dimer_interprotein_xl_1_rep.pb'), True)
@@ -245,15 +245,15 @@ class TestCrossLinkDataset:
 
         interprotein_pb = self._read_file(os.path.join(self.chimerax_folder, 'color_interprotein_xl_1_rep.pb'), True)
         intraprotein_pb = self._read_file(os.path.join(self.chimerax_folder, 'color_intraprotein_xl_1_rep.pb'), True)
-        homotypic_pb = self._read_file(os.path.join(self.chimerax_folder, 'color_homotypical_xl_1_rep.pb'), True)
+        homeotypic_pb = self._read_file(os.path.join(self.chimerax_folder, 'color_homeotypical_xl_1_rep.pb'), True)
 
         ref_interprotein_pb = self._read_file(os.path.join(self.chimerax_folder, 'color_interprotein_reference.pb'))
         ref_intraprotein_pb = self._read_file(os.path.join(self.chimerax_folder, 'color_intraprotein_reference.pb'))
-        ref_homotypic_pb = self._read_file(os.path.join(self.chimerax_folder, 'color_homotypical_reference.pb'))
+        ref_homeotypic_pb = self._read_file(os.path.join(self.chimerax_folder, 'color_homeotypical_reference.pb'))
         assert(
             len(interprotein_pb) == len(ref_interprotein_pb) and
             len(intraprotein_pb) == len(ref_intraprotein_pb) and
-            len(homotypic_pb) == len(ref_homotypic_pb)
+            len(homeotypic_pb) == len(ref_homeotypic_pb)
         )
 
     def test_positive_export_ppis_for_gephi(self):
@@ -349,7 +349,7 @@ class TestCrossLinkDataset:
         reference_dataset = copy.deepcopy(self.combined_dataset)
         reference_dataset.remove_intraprotein_crosslinks()
         reference_dataset.remove_interprotein_crosslinks()
-        reference_dataset.remove_homotypic_crosslinks()
+        reference_dataset.remove_homeotypic_crosslinks()
     
         unique_combined, unique_reference = CrossLinkDataset.unique_elements(self.combined_dataset, reference_dataset)
         len_after = len(self.combined_dataset)
@@ -377,7 +377,7 @@ class TestCrossLinkDataset:
 
         last_dataset.remove_intraprotein_crosslinks()
         last_dataset.remove_interprotein_crosslinks()
-        last_dataset.remove_homotypic_crosslinks()
+        last_dataset.remove_homeotypic_crosslinks()
 
         common_first, common_last = CrossLinkDataset.common_elements(first_dataset, last_dataset)
         for xl in common_first:

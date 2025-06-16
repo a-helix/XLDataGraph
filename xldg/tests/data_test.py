@@ -251,14 +251,14 @@ class TestCrossLink:
         filtered_data = CrossLink.remove_intraprotein(self.combined_dataset)
         assert len(filtered_data) == 138
 
-    def test_positive_remove_homotypic_crosslinks(self):
-        filtered_data = CrossLink.remove_homotypic(self.combined_dataset)
+    def test_positive_remove_homeotypic_crosslinks(self):
+        filtered_data = CrossLink.remove_homeotypic(self.combined_dataset)
         assert len(filtered_data) == 420
 
     def test_positive_remove_all_xls(self):
         filtered_data = CrossLink.remove_interprotein(self.combined_dataset)
         filtered_data = CrossLink.remove_intraprotein(filtered_data)
-        filtered_data = CrossLink.remove_homotypic(filtered_data)
+        filtered_data = CrossLink.remove_homeotypic(filtered_data)
         assert len(filtered_data) == 0
 
     def test_positive_blank_replica_counter(self):
@@ -293,7 +293,7 @@ class TestCrossLink:
 
         reference_dataset = CrossLink.remove_interprotein(self.combined_dataset)
         reference_dataset = CrossLink.remove_intraprotein(reference_dataset)
-        reference_dataset = CrossLink.remove_homotypic(reference_dataset)
+        reference_dataset = CrossLink.remove_homeotypic(reference_dataset)
     
         unique_combined, unique_reference = CrossLink.get_unique(self.combined_dataset, reference_dataset)
         len_after = len(self.combined_dataset)
@@ -321,7 +321,7 @@ class TestCrossLink:
 
         last_dataset = CrossLink.remove_interprotein(last_dataset)
         last_dataset = CrossLink.remove_intraprotein(last_dataset)
-        last_dataset = CrossLink.remove_homotypic(last_dataset)
+        last_dataset = CrossLink.remove_homeotypic(last_dataset)
 
         common_first, common_last = CrossLink.get_common(first_dataset, last_dataset)
         assert len(common_last) == 0 and len(common_first) == 0
@@ -344,7 +344,7 @@ class TestCrossLink:
 
         last_dataset = CrossLink.remove_interprotein(self.folder_content[-1])
         last_dataset = CrossLink.remove_intraprotein(last_dataset)
-        last_dataset = CrossLink.remove_homotypic(last_dataset)
+        last_dataset = CrossLink.remove_homeotypic(last_dataset)
         self.folder_content[2] = last_dataset
 
         combined_dataset = CrossLink.combine_selected(self.folder_content, [0, 2])

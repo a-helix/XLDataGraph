@@ -107,53 +107,53 @@ class TestCircos:
             )
 
     def test_positive_save_selected_xls(self):   
-        self.homotypic_config = CircosConfig(
+        self.homeotypic_config = CircosConfig(
             self.fasta_dataset, 
             plot_interprotein_xls = False, 
             plot_intraprotein_xls = False, 
-            plot_homotypical_xls = True
+            plot_homeotypical_xls = True
             )
 
         self.inter_config = CircosConfig(
             self.fasta_dataset, 
             plot_interprotein_xls = True, 
             plot_intraprotein_xls = False, 
-            plot_homotypical_xls = False
+            plot_homeotypical_xls = False
             )
 
         self.intra_config = CircosConfig(
             self.fasta_dataset, 
             plot_interprotein_xls = False, 
             plot_intraprotein_xls = True, 
-            plot_homotypical_xls = False
+            plot_homeotypical_xls = False
             )
 
-        self.homotypic_circos = Circos(self.combined_data, self.homotypic_config)
+        self.homeotypic_circos = Circos(self.combined_data, self.homeotypic_config)
         self.inter_circos = Circos(self.combined_data, self.inter_config)
         self.intra_circos = Circos(self.combined_data, self.intra_config)
 
-        homotypic_path = os.path.join(self.CWD, 'circos_test_homotypic.svg')
+        homeotypic_path = os.path.join(self.CWD, 'circos_test_homeotypic.svg')
         inter_path = os.path.join(self.CWD, 'circos_test_inter.svg')
         intra_path = os.path.join(self.CWD, 'circos_test_intra.svg')
 
-        self.homotypic_circos.save(homotypic_path)
+        self.homeotypic_circos.save(homeotypic_path)
         self.inter_circos.save(inter_path)
         self.intra_circos.save(intra_path)
 
-        homotypic_content = _read_file(homotypic_path, True)
+        homeotypic_content = _read_file(homeotypic_path, True)
         inter_content = _read_file(inter_path, True)
         intra_content = _read_file(intra_path, True)
 
-        ref_homotypic_path = os.path.join(self.CWD, 'circos_reference_homotypic.svg')
+        ref_homeotypic_path = os.path.join(self.CWD, 'circos_reference_homeotypic.svg')
         ref_inter_path = os.path.join(self.CWD, 'circos_reference_inter.svg')
         ref_intra_path = os.path.join(self.CWD, 'circos_reference_intra.svg')
 
-        ref_homotypic_content = _read_file(ref_homotypic_path)
+        ref_homeotypic_content = _read_file(ref_homeotypic_path)
         ref_inter_content = _read_file(ref_inter_path)
         ref_intra_content = _read_file(ref_intra_path)
 
         assert (
-            len(homotypic_content) == len(ref_homotypic_content) and
+            len(homeotypic_content) == len(ref_homeotypic_content) and
             len(inter_content) == len(ref_inter_content) and
             len(intra_content) == len(ref_intra_content)
             )
@@ -223,7 +223,7 @@ class TestCircos:
     def test_default_set_crosslink_colors(self):
         default_intra_color = copy.deepcopy(self.config.heterotypic_intraprotein_xl_color)
         default_inter_color = copy.deepcopy(self.config.heterotypic_interprotein_xl_color)
-        default_homo_color = copy.deepcopy(self.config.homotypic_xl_color)
+        default_homo_color = copy.deepcopy(self.config.homeotypic_xl_color)
         default_general_color = copy.deepcopy(self.config.general_xl_color)
 
         intra_color = '#21a2ed'
@@ -242,7 +242,7 @@ class TestCircos:
             # Check color assignment
             self.config.heterotypic_intraprotein_xl_color == intra_color and
             self.config.heterotypic_interprotein_xl_color == inter_color and
-            self.config.homotypic_xl_color == homo_color and
+            self.config.homeotypic_xl_color == homo_color and
             self.config.general_xl_color == general_color
         )
 
@@ -256,7 +256,7 @@ class TestCircos:
         assert (
             self.config.heterotypic_intraprotein_xl_color == light_gray and
             self.config.heterotypic_interprotein_xl_color == medium_gray and
-            self.config.homotypic_xl_color == dark_gray and
+            self.config.homeotypic_xl_color == dark_gray and
             self.config.general_xl_color == charcoal_gray
         )
 
@@ -284,7 +284,7 @@ class TestVenn2:
         self.config = VennConfig('First', 'Second', 'Third', 'Title')
 
     def test_positive_save(self):
-        etalon_data = CrossLink.remove_homotypic(self.combined_data)
+        etalon_data = CrossLink.remove_homeotypic(self.combined_data)
         compare_data = CrossLink.remove_interprotein(self.combined_data)
         venn2 = Venn2(etalon_data, compare_data, self.config)
 
@@ -304,10 +304,10 @@ class TestVenn2:
             )
 
     def test_negative_save(self):
-        etalon_data = CrossLink.remove_homotypic(self.combined_data)
+        etalon_data = CrossLink.remove_homeotypic(self.combined_data)
         etalon_data = CrossLink.remove_intraprotein(etalon_data)
 
-        compare_data = CrossLink.remove_homotypic(self.combined_data)
+        compare_data = CrossLink.remove_homeotypic(self.combined_data)
         compare_data = CrossLink.remove_interprotein(compare_data)
 
         venn2 = Venn2(etalon_data, compare_data, self.config)
@@ -393,16 +393,16 @@ class TestVenn3:
             )
 
     def test_negative_save(self):
-        iterprotein_crosslinks = CrossLink.remove_homotypic(self.predicted_crosslinks)
+        iterprotein_crosslinks = CrossLink.remove_homeotypic(self.predicted_crosslinks)
         iterprotein_crosslinks = CrossLink.remove_intraprotein(iterprotein_crosslinks)
 
-        homotypical_crosslinks = CrossLink.remove_intraprotein(self.predicted_crosslinks)
-        homotypical_crosslinks = CrossLink.remove_interprotein(homotypical_crosslinks)
+        homeotypical_crosslinks = CrossLink.remove_intraprotein(self.predicted_crosslinks)
+        homeotypical_crosslinks = CrossLink.remove_interprotein(homeotypical_crosslinks)
 
-        itraprotein_crosslinks = CrossLink.remove_homotypic(self.predicted_crosslinks)
+        itraprotein_crosslinks = CrossLink.remove_homeotypic(self.predicted_crosslinks)
         itraprotein_crosslinks = CrossLink.remove_interprotein(itraprotein_crosslinks)
 
-        venn3 = Venn3(iterprotein_crosslinks, itraprotein_crosslinks, homotypical_crosslinks, self.config)
+        venn3 = Venn3(iterprotein_crosslinks, itraprotein_crosslinks, homeotypical_crosslinks, self.config)
 
         save_path = os.path.join(self.CWD, 'venn3_test_negative.svg')
         before_exhist = os.path.isfile(save_path)
