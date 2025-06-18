@@ -1347,7 +1347,7 @@ class CrossLinkDataset:
     @classmethod
     def unique_elements(cls, dataset1: 'CrossLinkDataset', dataset2: 'CrossLinkDataset') -> Tuple['CrossLinkDataset', 'CrossLinkDataset']:
         count1 = dataset1.xls_site_count
-        count2 = dataset1.xls_site_count
+        count2 = dataset2.xls_site_count
         
         set1 = set(dataset1.xls)
         set2 = set(dataset2.xls)
@@ -1591,14 +1591,6 @@ class DomainDataset:
     def __iter__(self) -> Iterator['DomainEntity']:
         for domain in self.domains:
             yield domain
-    
-    # def __next__(self) -> 'DomainEntity':
-    #     if self._index < self._size:
-    #         domain = self.domains[self._index]
-    #         self._index += 1
-    #         return domain
-    #     else:
-    #         raise StopIteration
 
     def filter_by_fasta(self, FastaDataset: 'FastaDataset') -> 'DomainDataset':
         filtered_domains = []

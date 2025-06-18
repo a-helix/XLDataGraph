@@ -103,7 +103,7 @@ class CircosConfig:
         self.general_xl_color = _valid_hex_color(general_xl_color)
 
 
-class Circos:  
+class Circos: 
     def __init__(self, xls: 'CrossLinkDataset', config: 'CircosConfig'):
         self.config = copy.deepcopy(config)
         self.xls = copy.deepcopy(xls)
@@ -212,7 +212,7 @@ class Circos:
             track = sector.add_track((92, 100))
             track.axis(fc = self.prot_colors[sector.name])
             if self.config.plot_protein_ids:
-                sector.text(sector.name, color = '#3A3B3C', r = 110, size=self.config.prot_font_size)
+                sector.text(sector.name.replace('>', ''), color = '#3A3B3C', r = 110, size=self.config.prot_font_size)
 
             if self.domains != None:
                 for domain in self.domains:
@@ -323,7 +323,6 @@ class Circos:
             else:
                 exhist_intraprotein_xl = True
                 
-            
         if most_frequent_xl == 0:
             return
 

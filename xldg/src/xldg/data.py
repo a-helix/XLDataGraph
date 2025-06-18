@@ -288,7 +288,7 @@ class CrossLink:
         combined_xls = None
         for dataset in dataset_list:
             if combined_xls is None:
-                combined_xls = dataset
+                combined_xls = copy.deepcopy(dataset)
             else:
                 combined_xls += dataset
         return combined_xls
@@ -307,7 +307,7 @@ class CrossLink:
         buffer = None
         for x in indexes:
             if buffer is None:
-                buffer = dataset_list[x]
+                buffer = copy.deepcopy(dataset_list[x])
             else:
                 buffer += dataset_list[x]
 
