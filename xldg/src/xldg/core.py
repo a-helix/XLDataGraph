@@ -42,6 +42,8 @@ class ProteinChainDataset:
         return iter(self.pcds.items())
 
     def __getitem__(self, key):
+        if key not in self.pcds:
+            return None
         return self.pcds[key]
 
     def __next__(self):
@@ -140,8 +142,7 @@ class CrossLinkEntity:
         direct_match = None
         reverse_match = None
         if not isinstance(other, CrossLinkEntity):
-            raise ValueError(
-                'Cannot compare CrossLinkEntity with non-CrossLinkEntity object')
+            return NotImplemented
 
         if self.software == 'Prediction' or other.software == 'Prediction':
             direct_match = (self.protein_1 == other.protein_1 and
@@ -168,11 +169,20 @@ class CrossLinkEntity:
         return direct_match or reverse_match
     
     def __hash__(self):
-        if self.protein_1 < self.protein_2 or (self.protein_1 == self.protein_2 and self.num_site_1 <= self.num_site_2):
-            return hash((self.protein_1, self.num_site_1, self.protein_2, self.num_site_2))
+        if self.software == 'Prediction':
+            if self.protein_1 < self.protein_2 or (self.protein_1 == self.protein_2 and self.num_site_1 <= self.num_site_2):
+                return hash((self.protein_1, self.num_site_1, self.protein_2, self.num_site_2))
+            else:
+                return hash((self.protein_2, self.num_site_2, self.protein_1, self.num_site_1))
         else:
-            return hash((self.protein_2, self.num_site_2, self.protein_1, self.num_site_1))
-    
+            key1 = (self.protein_1, self.peptide_1, self.site_1)
+            key2 = (self.protein_2, self.peptide_2, self.site_2)
+        
+            if key1 <= key2:
+                return hash((key1, key2))
+            else:
+                return hash((key2, key1))
+
     def __str__(self):
         return f'{self.protein_1},{self.num_site_1},{self.protein_2},{self.num_site_2},{self.is_interprotein},{self.is_homeotypical}'
 
@@ -928,10 +938,10 @@ class CrossLinkDataset:
 
     def __add__(self, other):
         if not isinstance(other, CrossLinkDataset):
-            return NotImplemented  # Return if other is not a CrossLinkDataset
+            return NotImplemented
 
         combined_xls = self.xls + other.xls
-        combined_xls_site_count = self.xls_site_count
+        combined_xls_site_count = copy.deepcopy(self.xls_site_count)
 
         for site, count in other.xls_site_count.items():
             if site not in combined_xls_site_count:
@@ -939,10 +949,22 @@ class CrossLinkDataset:
             else:
                 combined_xls_site_count[site] += count
 
+        
         final = CrossLinkDataset(combined_xls)
         final.xls_site_count = combined_xls_site_count
 
         return final
+
+    def __iadd__(self, other):
+        if not isinstance(other, CrossLinkDataset):
+            return NotImplemented
+
+        combined = self + other  # Reuse your existing __add__ logic
+
+        # In-place update of current object
+        self.xls = combined.xls
+        self.xls_site_count = combined.xls_site_count
+        return self
 
     def __getitem__(self, index):
         return self.xls[index]
@@ -1148,7 +1170,7 @@ class CrossLinkDataset:
                 matching_atoms1 = [atom for atom in filtered_protein_structure if str(atom.number) == site1_str and atom.chain == chain1]
                 matching_atoms2 = [atom for atom in filtered_protein_structure if str(atom.number) == site2_str and atom.chain == chain2]
 
-                if len(matching_atoms1) != 1 or len(matching_atoms1) != 1:
+                if len(matching_atoms1) != 1 or len(matching_atoms2) != 1:
                     raise ValueError(f'Wrong chain assignment in ProteinChain file')
 
                 distance = matching_atoms1[0].distance_to(matching_atoms2[0])
@@ -1162,6 +1184,7 @@ class CrossLinkDataset:
                 valid_buffer.append(f'/{chain1}:{crosslink.num_site_1}@CA\t/{chain2}:{crosslink.num_site_2}@CA\t{color_valid_distance}')
 
         xl_frequencies: Set[int] = set(self.xls_site_count.values())
+        
         for xl_frequency in xl_frequencies:
             buffer_homeotypical_xl = []
             buffer_heterotypical_intra_xl = []
@@ -1170,14 +1193,16 @@ class CrossLinkDataset:
             outliers_buffer_homeotypical_xl = []
             outliers_buffer_heterotypical_intra_xl = []
             outliers_buffer_heterotypical_inter_xl = []
-            distance = 0
 
             for key, value in self.xls_site_count.items():
                 if value != xl_frequency:
                     continue
 
                 crosslink = self._validate_terminus_sites(key)
-                chains = pcd[crosslink.protein_1] 
+                chains = pcd[crosslink.protein_1]
+                if chains is None:
+                    continue
+
                 if crosslink.is_homeotypical:
                     for c1 in chains:
                         for c2 in chains:
@@ -1187,6 +1212,8 @@ class CrossLinkDataset:
                 elif crosslink.is_interprotein:
                     chain1 = pcd[crosslink.protein_1]
                     chain2 = pcd[crosslink.protein_2]
+                    if chain1 is None or chain2 is None:
+                        continue
 
                     for c1 in chain1:
                         for c2 in chain2:
@@ -1197,15 +1224,14 @@ class CrossLinkDataset:
                         for c2 in chains:
                             _clasify_crosslink(crosslink, buffer_heterotypical_intra_xl, outliers_buffer_heterotypical_intra_xl, c1, c2)
 
-        # Writing to files
-        if protein_structure:
-            _write_to_pb_file(outliers_buffer_heterotypical_inter_xl, f'outliers_{file_name}_interprotein_xl_{xl_frequency}_rep.pb')
-            _write_to_pb_file(outliers_buffer_heterotypical_intra_xl, f'outliers_{file_name}_intraprotein_xl_{xl_frequency}_rep.pb')
-            _write_to_pb_file(outliers_buffer_homeotypical_xl, f'outliers_{file_name}_homeotypical_xl_{xl_frequency}_rep.pb')
+            if protein_structure:
+                _write_to_pb_file(outliers_buffer_heterotypical_inter_xl, f'outliers_{file_name}_interprotein_xl_{xl_frequency}_rep.pb')
+                _write_to_pb_file(outliers_buffer_heterotypical_intra_xl, f'outliers_{file_name}_intraprotein_xl_{xl_frequency}_rep.pb')
+                _write_to_pb_file(outliers_buffer_homeotypical_xl, f'outliers_{file_name}_homeotypical_xl_{xl_frequency}_rep.pb')
 
-        _write_to_pb_file(buffer_heterotypical_inter_xl, f'{file_name}_interprotein_xl_{xl_frequency}_rep.pb')
-        _write_to_pb_file(buffer_heterotypical_intra_xl, f'{file_name}_intraprotein_xl_{xl_frequency}_rep.pb')
-        _write_to_pb_file(buffer_homeotypical_xl, f'{file_name}_homeotypical_xl_{xl_frequency}_rep.pb')
+            _write_to_pb_file(buffer_heterotypical_inter_xl, f'{file_name}_interprotein_xl_{xl_frequency}_rep.pb')
+            _write_to_pb_file(buffer_heterotypical_intra_xl, f'{file_name}_intraprotein_xl_{xl_frequency}_rep.pb')
+            _write_to_pb_file(buffer_homeotypical_xl, f'{file_name}_homeotypical_xl_{xl_frequency}_rep.pb')
 
     def export_ppis_for_gephi(self, 
         folder_path: str, 
@@ -1385,6 +1411,20 @@ class CrossLinkDataset:
         common_dataset2.xls_site_count = {k: count2[k] for k in count2 if k in common_elements}
         
         return common_dataset1, common_dataset2
+
+    @classmethod
+    def combine_datasets(cls, buffer: List['CrossLinkDataset']) -> 'CrossLinkDataset':
+        if not buffer:
+            return cls([])
+    
+        if len(buffer) == 1:
+            return buffer[0]
+    
+        result = buffer[0]
+        for item in buffer[1:]:
+            result += item
+        return result
+
 
 class FastaEntity:
     def __init__(self, header: str, sequence: str, fasta_format: str, remove_parenthesis: bool = False):

@@ -337,7 +337,7 @@ class TestCrossLink:
             else:
                 raise ValueError('Combined elements are not the same')
 
-        assert len(combined_dataset) == 339 and len(combined_dataset) == len(first_dataset) + len(last_dataset)
+        assert len(combined_dataset) == 539 and len(combined_dataset) == len(first_dataset) + len(last_dataset)
 
     def test_negative_combine_selected(self):
         first_dataset = self.folder_content[0]
@@ -353,6 +353,15 @@ class TestCrossLink:
                 raise ValueError('Combined elements are not the same')
 
         assert len(combined_dataset) == len(first_dataset)
+
+    def test_positive_combine_replicas(self):
+        combined_dataset = CrossLink.combine_replicas(self.folder_content, n=3)
+        reference_dataset = CrossLink.combine_all(self.folder_content)
+        assert len(combined_dataset[0]) == len(reference_dataset)
+
+    def test_negative_combine_replicas(self):
+        with pytest.raises(ValueError, match = 'Dataset size 3 is not mutiple to n=4'):
+            combined_dataset = CrossLink.combine_replicas(self.folder_content, n=4)
 
 
 class TestProteinChain:

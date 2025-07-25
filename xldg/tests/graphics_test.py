@@ -11,7 +11,7 @@ def _read_file(file_path: str, delete: bool = False):
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    if delete: 
+    if delete:
         os.remove(file_path)
     return content
 
@@ -106,7 +106,7 @@ class TestCircos:
             len(extended_content) == len(ref_extended_content)
             )
 
-    def test_positive_save_selected_xls(self):   
+    def test_positive_save_selected_xls(self):
         self.homeotypic_config = CircosConfig(
             self.fasta_dataset, 
             plot_interprotein_xls = False, 
@@ -158,7 +158,7 @@ class TestCircos:
             len(intra_content) == len(ref_intra_content)
             )
 
-    def test_positive_save_min_max_rep(self):   
+    def test_positive_save_min_max_rep(self):
         self.min_config = CircosConfig(self.fasta_dataset, min_rep = 2)
         self.max_config = CircosConfig(self.fasta_dataset, max_rep = 1)
 
@@ -185,7 +185,7 @@ class TestCircos:
             len(max_content) == len(ref_max_content)
             )
 
-    def test_positive_save_plot_all_proteins(self):   
+    def test_positive_save_plot_all_proteins(self):
         self.basic_config = CircosConfig(self.fasta_dataset, min_rep = 2)
         self.modified_config = CircosConfig(self.fasta_dataset, min_rep = 2, plot_all_proteins = True)
 
@@ -212,7 +212,7 @@ class TestCircos:
             len(modified_content) == len(ref_modified_content)
             )
 
-    def test_negative_save_exception_min_and_max_replica(self):   
+    def test_negative_save_exception_min_and_max_replica(self):
         self.config = CircosConfig(self.fasta_dataset, 
                                    min_rep = 2, 
                                    max_rep = 1)  # min > max

@@ -75,7 +75,7 @@ class Fasta:
             path = [path] 
         
         all_contents = [] 
-        
+
         for file_path in path:
             Path.validate_file_existence(file_path)  
             Path.confirm_file_format(file_path, 'fasta', 'fas') 
@@ -118,6 +118,7 @@ class MeroX:
         def process_file(file_path: str) -> 'CrossLinkDataset':
             Path.validate_file_existence(file_path)
             Path.confirm_file_format(file_path, 'zhrm')
+
             xls = []
             software = 'MeroX'
 
@@ -126,8 +127,8 @@ class MeroX:
                     for line in io.TextIOWrapper(csv_file, encoding='utf-8'):
                         row = line.strip().split(';')
                         xl = CrossLinkEntity(row[7], row[6], row[8], row[9], row[20], 
-                                       row[11], row[10], row[12], row[13], row[21],
-                                       row[0], software, linker)
+                                        row[11], row[10], row[12], row[13], row[21],
+                                        row[0], software, linker)
                         xls.append(xl)
 
             dataset = CrossLinkDataset(xls)
@@ -285,13 +286,7 @@ class CrossLink:
 
     @staticmethod
     def combine_all(dataset_list: List['CrossLinkDataset']) -> 'CrossLinkDataset':
-        combined_xls = None
-        for dataset in dataset_list:
-            if combined_xls is None:
-                combined_xls = copy.deepcopy(dataset)
-            else:
-                combined_xls += dataset
-        return combined_xls
+        return CrossLinkDataset.combine_datasets(dataset_list)
 
     @staticmethod
     def combine_selected(dataset_list: List['CrossLinkDataset'], indexes: List[int]) -> 'CrossLinkDataset':

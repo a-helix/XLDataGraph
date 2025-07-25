@@ -397,7 +397,7 @@ class TestCrossLinkDataset:
             else:
                 raise ValueError('Combined elements are not the same')
 
-        assert len(combined_dataset) == 339 and len(combined_dataset) == len(first_dataset) + len(last_dataset)
+        assert len(combined_dataset) == 539 and len(combined_dataset) == len(first_dataset) + len(last_dataset)
 
 
 class TestFastaEntity:

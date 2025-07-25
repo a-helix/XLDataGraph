@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>a9d1593d-9273-4f28-aa52-952659dd5c68</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>examples\chimerax\Joshua.py</StartupFile>
+    <StartupFile>examples\chimerax\Ilnaz.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -26,7 +26,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="examples\chimerax\chimerax_export_with_protein_structure.py" />
-    <Compile Include="examples\chimerax\Felix.py" />
+    <Compile Include="examples\chimerax\Ilnaz.py" />
     <Compile Include="examples\chimerax\Joshua.py" />
     <Compile Include="examples\chimerax\predict_crosslinks.py" />
     <Compile Include="examples\chimerax\venn_diagram.py" />
@@ -34,8 +34,8 @@
     <Compile Include="examples\Florian.py" />
     <Compile Include="examples\gephi.py" />
     <Compile Include="examples\gephi_export.py" />
-    <Compile Include="examples\Florian2.py" />
     <Compile Include="examples\venn_diagram.py" />
+    <Compile Include="examples\WFG.py" />
     <Compile Include="src\xldg\graphics.py" />
     <Compile Include="src\xldg\data.py" />
     <Compile Include="src\xldg\core.py" />
