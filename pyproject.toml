@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xldg"
-version = "0.3.5"
+version = "0.3.6"
 description = "XLDataGraph is a library for crosslinking data analysis and visualization."
 readme = "README.md"
 authors = [{name = "a-helix"}]
@@ -29,7 +29,8 @@ dependencies = [
 
 [tool.setuptools]
 package-dir = {"" = "xldg/src"}
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["xldg/src"]
-exclude = ["tests*"]
+exclude = ["tests*", "examples*", "venv*"]

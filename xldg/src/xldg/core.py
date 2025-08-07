@@ -1080,6 +1080,9 @@ class CrossLinkDataset:
                 if 'H2O' in xl.protein_1 or 'H2O' in xl.protein_2:
                     continue
 
+                if 'intrapeptidal' in xl.protein_1 or 'intrapeptidal' == xl.protein_2:
+                    continue
+
             buffer.append(xl)
         self.xls = buffer
 

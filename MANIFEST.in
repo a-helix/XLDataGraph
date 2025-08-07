@@ -1,0 +1,3 @@
+prune xldg/tests
+prune xldg/examples
+prune xldg/venv

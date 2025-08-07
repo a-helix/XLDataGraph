@@ -5,6 +5,7 @@ xldg/tests/data/
 examples/
 TestResults/
 build/
+dist/
 xldg.egg-info/
 __pycache__/
 xldg/src/xldg/api.py
