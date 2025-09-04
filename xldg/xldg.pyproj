@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>a9d1593d-9273-4f28-aa52-952659dd5c68</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>examples\Felix.py</StartupFile>
+    <StartupFile>examples\module1.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -25,18 +25,11 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="examples\chimerax\chimerax_export_with_protein_structure.py" />
-    <Compile Include="examples\chimerax\Ilnaz.py" />
-    <Compile Include="examples\chimerax\Joshua.py" />
-    <Compile Include="examples\chimerax\predict_crosslinks.py" />
-    <Compile Include="examples\chimerax\venn_diagram.py" />
-    <Compile Include="examples\circus.py" />
-    <Compile Include="examples\Felix.py" />
-    <Compile Include="examples\Florian.py" />
-    <Compile Include="examples\gephi.py" />
+    <Compile Include="examples\chimerax_export.py" />
+    <Compile Include="examples\circus_plot.py" />
     <Compile Include="examples\gephi_export.py" />
+    <Compile Include="examples\module1.py" />
     <Compile Include="examples\venn_diagram.py" />
-    <Compile Include="examples\WFG.py" />
     <Compile Include="src\xldg\graphics.py" />
     <Compile Include="src\xldg\data.py" />
     <Compile Include="src\xldg\core.py" />
@@ -47,7 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="examples\" />
-    <Folder Include="examples\chimerax\" />
+    <Folder Include="examples\files\" />
     <Folder Include="src\" />
     <Folder Include="src\xldg\" />
     <Folder Include="tests\" />
@@ -79,6 +72,11 @@
     </Interpreter>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="examples\files\dataset_1.zhrm" />
+    <Content Include="examples\files\dataset_2.zhrm" />
+    <Content Include="examples\files\dataset_3.zhrm" />
+    <Content Include="examples\files\two_monomers_complex.cif" />
+    <Content Include="examples\files\two_monomers_complex.pcd" />
     <Content Include="tests\files\data\crosslink\chimerax\color_homotypical_reference.pb" />
     <Content Include="tests\files\data\crosslink\chimerax\color_interprotein_reference.pb" />
     <Content Include="tests\files\data\crosslink\chimerax\color_intraprotein_reference.pb" />

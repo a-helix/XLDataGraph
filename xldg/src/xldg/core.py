@@ -1,5 +1,4 @@
 ﻿from dataclasses import dataclass
-from optparse import Option
 from typing import List, Tuple, Dict, Set, Iterator, Optional
 import os
 import sys
@@ -7,17 +6,13 @@ import re
 import copy
 import math
 from dataclasses import dataclass
-import itertools
-import random
-import concurrent.futures
 import multiprocessing
-from functools import partial
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
 import numpy as np
-from scipy.spatial import distance
+from networkx.algorithms.shortest_paths.astar import astar_path_length
 import networkx as nx
 
 
@@ -451,12 +446,14 @@ class ProteinStructureDataset:
         G = self._build_optimized_visibility_graph(helper_nodes, radius, max_distance, start_node, goal_node)
 
         # Step 4: Pathfinding
+        def euclidean_heuristic(u, v):
+            return u.distance_to(v)
+
         try:
-            path_length = nx.dijkstra_path_length(G, start_node, goal_node, weight='weight')
-            # Check if path length is within range
+            path_length = astar_path_length(G, start_node, goal_node, heuristic=euclidean_heuristic, weight='weight')
+            # path_length = nx.dijkstra_path_length(G, start_node, goal_node, weight='weight')
             return min_distance <= path_length <= max_distance
         except nx.NetworkXNoPath:
-            # No valid path exists
             return False
 
     def _is_point_valid(self, point: Node, obstacles: list[Node], radius: float) -> bool:
@@ -483,7 +480,6 @@ class ProteinStructureDataset:
             (start_node.z + goal_node.z) / 2
         )
     
-        # Calculate direct distance between start and goal
         direct_distance = start_node.distance_to(goal_node)
     
         # Find obstacles within the relevant search area
@@ -858,6 +854,7 @@ class ProteinStructureDataset:
                     if min_length <= a1.distance_to(a2) <= max_length:
                         crosslink_pairs.append((a1, a2))
         else:
+            # Sampling-based Visibility Graph Planner with A* Search
             # Path distance calculation (multi-process version)
             # Generate all pairs to evaluate and convert to indices
             pairs_to_check = []
@@ -1269,10 +1266,10 @@ class CrossLinkDataset:
     
         self._create_gexf(save_path, node_buffer, edge_buffer)
 
-    def export_aais_for_gephi(self, 
-        pcd: ProteinChainDataset, 
+    def export_aais_for_gephi(self,
         folder_path: str, 
-        file_name: str 
+        file_name: str,
+        pcd: ProteinChainDataset
     ) -> None:
 
         save_path = self._validate_gephi_format(folder_path, file_name)
