@@ -2,7 +2,6 @@
 
 **XLDataGraph** is a feature-rich Python library for processing, filtering, comparing, and visualizing crosslinking mass spectrometry results. Built for advanced structural biology and proteomics workflows, it offers seamless integration of sequence, domain, and structural data, supporting publication-ready visualizations and network analyses.
 
-***
 
 ## Table of Contents
 
@@ -21,7 +20,6 @@
 - [Contact](#contact)
 - [Project Status](#project-status)
 
-***
 
 ## Features
 
@@ -37,7 +35,6 @@
 - **Structural predictions**: Fast CA-CA or advanced A* path-based 3D predictions for hypothetical crosslinks.
 - **Scriptable** and extensible for custom workflows.
 
-***
 
 ## Installation
 
@@ -45,8 +42,6 @@
 pip install xldg
 ```
 
-
-***
 
 ## Supported File Types
 
@@ -58,8 +53,6 @@ pip install xldg
 | `.pcd` | Protein-chain assignment descriptor |
 | `.cif`/`.pdb` | Structure files (mmCIF or PDB format) |
 
-
-***
 
 ## Quick Start Example
 
@@ -78,8 +71,6 @@ circos = Circos(combined, config)
 circos.save(os.path.join(cwd, 'results', 'circos_basic.svg'))
 ```
 
-
-***
 
 ## API Overview
 
@@ -118,7 +109,6 @@ circos.save(os.path.join(cwd, 'results', 'circos_basic.svg'))
 - **CrossLink.blank_replica(dataset)**
     - Set all replica counts to 1 for plotting/overlap analyses.
 
-***
 
 ### Visualization
 
@@ -133,14 +123,12 @@ circos.save(os.path.join(cwd, 'results', 'circos_basic.svg'))
 - **CrossLinkDataset.export_for_chimerax(...)**
     - Exports `.pb` pseudo-bond files for ChimeraX (see below for expanded argument docs).
 
-***
 
 ### Structural Prediction
 
 - **ProteinStructureDataset.predict_crosslinks(...)**
     - Predicts possible crosslinks based on atomic-residue coordinates; can use direct or sampled pathfinding.
 
-***
 
 ## Detailed Method Documentation
 
@@ -220,7 +208,6 @@ circos.save(os.path.join(cwd, 'results', 'circos_basic.svg'))
 - **dataset:** `CrossLinkDataset` or `list`. All replica counts set to 1.
 - **returns:** Dataset(s) for plotting or overlap comparison.
 
-***
 
 ### Visualization Methods
 
@@ -287,7 +274,6 @@ circos.save(os.path.join(cwd, 'results', 'circos_basic.svg'))
 - **atom_type:** str. (Usually "CA").
 - **returns:** None. Writes one or more `*.pb` files for ChimeraX.
 
-***
 
 ### Structure-Based Crosslink Prediction
 
@@ -305,7 +291,6 @@ circos.save(os.path.join(cwd, 'results', 'circos_basic.svg'))
 - **num_processes:** CPU count for parallel calculation (A* only).
 - **returns:** CrossLinkDataset of predicted sites.
 
-***
 
 ## Examples
 
@@ -316,25 +301,21 @@ See `examples/` directory for:
 - Gephi (network) and Venn visualization
 - Combined, advanced dataset filtering and merging
 
-***
 
 ## Contributing
 
 Issues and pull requests welcome! See [GitHub Issues](https://github.com/a-helix/XLDataGraph/issues).
 
-***
 
 ## License
 
 This project is licensed under the GNU GPLv3.
 
-***
 
 ## Contact
 
 - GitHub: [@a-helix](https://github.com/a-helix)
 
-***
 
 ## Project Status
 
