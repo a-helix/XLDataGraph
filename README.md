@@ -38,7 +38,7 @@
 
 ## Installation
 
-```bash
+```
 pip install xldg
 ```
 
@@ -47,9 +47,9 @@ pip install xldg
 
 | Extension | Description |
 | :-- | :-- |
-| `.fasta` | Protein sequences (Uniprot, Araport, Custom) |
-| `.dmn` | Protein domain annotation (CSV) |
-| `.zhrm` | MeroX result (ZIP archive with CSV) |
+| `.fasta` | Protein sequences (Uniprot, Araport11, Custom) |
+| `.dmn` | Protein domain annotation |
+| `.zhrm` | MeroX result |
 | `.pcd` | Protein-chain assignment descriptor |
 | `.cif`/`.pdb` | Structure files (mmCIF or PDB format) |
 
@@ -119,7 +119,7 @@ circos.save(os.path.join(cwd, 'results', 'circos_basic.svg'))
 - **CrossLinkDataset.export_ppis_for_gephi(folder, filename, pcd)**
     - Exports protein-protein interaction graphs for Gephi visualization.
 - **CrossLinkDataset.export_aais_for_gephi(folder, filename, pcd)**
-    - Exports residue–residue networks.
+    - Exports residue-residue networks.
 - **CrossLinkDataset.export_for_chimerax(...)**
     - Exports `.pb` pseudo-bond files for ChimeraX (see below for expanded argument docs).
 
@@ -180,14 +180,14 @@ circos.save(os.path.join(cwd, 'results', 'circos_basic.svg'))
 
 - **dataset:** `CrossLinkDataset` or `list`. Dataset(s) to filter.
 - **returns:** Dataset with **all intra-protein crosslinks removed** (only interprotein and homeotypic links remain).[^1][^2]
-- **Effect:** Good for focusing on protein–protein interactions (interactions between different proteins).
+- **Effect:** Good for focusing on protein-protein interactions (interactions between different proteins).
 
 
 #### `CrossLink.remove_homeotypic(dataset)`
 
 - **dataset:** `CrossLinkDataset` or `list`. Dataset(s) to filter.
 - **returns:** Dataset with **all homeotypic crosslinks removed** (where both sites correspond to the same residue or peptide).[^2][^1]
-- **Effect:** Streamlines network/structural analyses by removing redundancy (self/self crosslinks).
+- **Effect:** Streamlines network/structural analyses by removing redundancy.
 
 
 #### `CrossLink.combine_all(datasets)`
@@ -319,4 +319,4 @@ This project is licensed under the GNU GPLv3.
 
 ## Project Status
 
-XLDataGraph is actively developed — please see the repository for the latest features, bugfixes, and documentation.
+XLDataGraph is actively developed - please see the repository for the latest features, bugfixes, and documentation.
