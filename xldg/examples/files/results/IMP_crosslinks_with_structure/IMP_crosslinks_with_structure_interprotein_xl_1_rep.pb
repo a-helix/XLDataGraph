@@ -1,0 +1,14 @@
+; dashes = 1
+; radius = 0.2
+/A:329@CA	/B:517@CA	#48cae4
+/B:473@CA	/A:483@CA	#48cae4
+/A:554@CA	/B:457@CA	#48cae4
+/B:302@CA	/A:517@CA	#48cae4
+/B:552@CA	/A:370@CA	#48cae4
+/B:491@CA	/A:552@CA	#48cae4
+/B:314@CA	/A:370@CA	#48cae4
+/B:479@CA	/A:554@CA	#48cae4
+/A:495@CA	/B:483@CA	#48cae4
+/A:329@CA	/B:552@CA	#48cae4
+/A:5@CA	/B:302@CA	#48cae4
+/B:517@CA	/A:281@CA	#48cae4

@@ -2,7 +2,6 @@
 xldg/venv/
 xldg/env11/
 xldg/tests/data/
-examples/
 TestResults/
 build/
 dist/
