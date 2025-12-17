@@ -4,15 +4,14 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>a9d1593d-9273-4f28-aa52-952659dd5c68</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>
-    </StartupFile>
+    <StartupFile>examples\run.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>xldg</Name>
     <RootNamespace>xldg</RootNamespace>
-    <InterpreterId>MSBuild|venv|$(MSBuildProjectFullPath)</InterpreterId>
+    <InterpreterId>MSBuild|test|$(MSBuildProjectFullPath)</InterpreterId>
     <TestFramework>pytest</TestFramework>
     <UnitTestPattern>*_test.py</UnitTestPattern>
     <UnitTestRootDirectory>.</UnitTestRootDirectory>
@@ -29,6 +28,7 @@
     <Compile Include="examples\chimerax_export.py" />
     <Compile Include="examples\circus_plot.py" />
     <Compile Include="examples\gephi_export.py" />
+    <Compile Include="examples\run.py" />
     <Compile Include="examples\venn_diagram.py" />
     <Compile Include="src\xldg\graphics.py" />
     <Compile Include="src\xldg\data.py" />
@@ -60,6 +60,15 @@
     <Folder Include="tests\files\graphics\venn3\" />
   </ItemGroup>
   <ItemGroup>
+    <Interpreter Include="test\">
+      <Id>test</Id>
+      <Version>3.12</Version>
+      <Description>test (Python 3.12 (64-bit))</Description>
+      <InterpreterPath>Scripts\python.exe</InterpreterPath>
+      <WindowsInterpreterPath>Scripts\pythonw.exe</WindowsInterpreterPath>
+      <PathEnvironmentVariable>PYTHONPATH</PathEnvironmentVariable>
+      <Architecture>X64</Architecture>
+    </Interpreter>
     <Interpreter Include="venv\">
       <Id>venv</Id>
       <Version>3.11</Version>

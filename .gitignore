@@ -1,6 +1,6 @@
 .vs/
 xldg/venv/
-xldg/env11/
+xldg/test/
 xldg/tests/data/
 TestResults/
 build/
