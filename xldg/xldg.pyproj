@@ -11,7 +11,7 @@
     <OutputPath>.</OutputPath>
     <Name>xldg</Name>
     <RootNamespace>xldg</RootNamespace>
-    <InterpreterId>MSBuild|test|$(MSBuildProjectFullPath)</InterpreterId>
+    <InterpreterId>MSBuild|venv|$(MSBuildProjectFullPath)</InterpreterId>
     <TestFramework>pytest</TestFramework>
     <UnitTestPattern>*_test.py</UnitTestPattern>
     <UnitTestRootDirectory>.</UnitTestRootDirectory>

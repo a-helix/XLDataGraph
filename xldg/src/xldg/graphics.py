@@ -126,10 +126,10 @@ class Circos:
         if self.config.domains is not None:
             self.domains = copy.deepcopy(self.config.domains)
             self.domains.filter_by_fasta(self.fasta)
-
         self.fig = None
-        
+
         self.sectors = {prot.prot_gene: prot.seq_length for prot in self.fasta}
+
         self.prot_colors = self._assign_colors()
         self.circos = circos(self.sectors, space=self.config.space_between_sectors)
      

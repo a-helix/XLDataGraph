@@ -1,8 +1,3 @@
 prune xldg/tests
-prune xldg/test
 prune xldg/examples
 prune xldg/venv
-prune xldg/src/xldg.egg-info
-prune xldg/src/xldg/xldg.egg-info
-global-exclude *.pyc
-global-exclude __pycache__

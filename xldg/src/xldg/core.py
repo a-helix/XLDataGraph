@@ -1,4 +1,4 @@
-﻿from dataclasses import dataclass
+from dataclasses import dataclass
 from typing import List, Tuple, Dict, Set, Iterator, Optional
 import os
 import sys
@@ -53,7 +53,7 @@ class CrossLinkEntity:
 
     def _initialize_merox_xl(self):
         #Fix for a strange Merox assignment
-        self.protein_1 = self._remove_text_in_brackets(self.protein_1).replace('  ', ' ')
+        self.protein_1 = self._remove_text_in_brackets(self.protein_1).strip().replace('  ', ' ')
         self.from_1 = int(self.from_1)
         self.to_1 = int(self.to_1)
         self.num_site_1 = self.from_1 + int(self.site_1[1:]) - 1
@@ -63,7 +63,7 @@ class CrossLinkEntity:
             self.num_site_1 = 1
 
         #Fix for a strange Merox assignment
-        self.protein_2 = self._remove_text_in_brackets(self.protein_2).replace('  ', ' ')
+        self.protein_2 = self._remove_text_in_brackets(self.protein_2).strip().replace('  ', ' ')
         self.from_2 = int(self.from_2)
         self.to_2 = int(self.to_2)
         self.num_site_2 =  self.from_2 + int(self.site_2[1:]) - 1
@@ -1428,18 +1428,18 @@ class CrossLinkDataset:
 
 class FastaEntity:
     def __init__(self, header: str, sequence: str, fasta_format: str, remove_parenthesis: bool = False):
-        self.raw_header = header
+        self.raw_header = header.strip()
         self.remove_parenthesis = remove_parenthesis
 
         if self.remove_parenthesis:
-            self.raw_header = header.replace('(', '').replace(')', '')  # Merox also removes scopes
+            self.raw_header = self.raw_header.replace('(', '').replace(')', '')  # Merox also removes scopes
 
         self.raw_sequence = sequence
         try:
             if fasta_format == 'Uniprot':
-                self.db_id, self.prot_gene = self._split_uniprot_fasta_header(header)
+                self.db_id, self.prot_gene = self._split_uniprot_fasta_header(self.raw_header)
             elif fasta_format == 'Araport11':
-                self.db_id, self.prot_gene = self._split_araport11_fasta_header(header)
+                self.db_id, self.prot_gene = self._split_araport11_fasta_header(self.raw_header)
             elif fasta_format == 'Custom':
                 self.db_id, self.prot_gene = self.raw_header, self.raw_header
             else:
@@ -1562,7 +1562,7 @@ class FastaDataset:
         
         for fasta in self.entities:
             for xl in merox_xls:
-                if xl.protein_1 == fasta.raw_header or xl.protein_2 == fasta.raw_header:
+                if xl.protein_1.strip() == fasta.raw_header or xl.protein_2.strip() == fasta.raw_header:
                     filtered_entities.add(fasta)
                     break
 
@@ -1636,9 +1636,9 @@ class DomainDataset:
         filtered_domains = []
         for domain in self.domains:
             for fasta in FastaDataset:
+                
                 if domain.gene == fasta.prot_gene:
                     filtered_domains.append(domain)
                     break
-
         self.domains = filtered_domains
         return self
